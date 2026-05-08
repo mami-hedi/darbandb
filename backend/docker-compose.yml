@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: darbandb_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: darbandb
+      MYSQL_USER: darban_user
+      MYSQL_PASSWORD: darban_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - darban_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darbandb_backend
+    depends_on:
+      - mysql
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_NAME: darbandb
+      DB_USER: darban_user
+      DB_PASSWORD: darban_pass
+    networks:
+      - darban_network
+    volumes:
+      - ./src:/app/src
+
+volumes:
+  mysql_data:
+
+networks:
+  darban_network:
+    driver: bridge
