@@ -5,6 +5,10 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LangSwitch } from "./LangSwitch";
 import { cn } from "@/lib/utils";
 
+// Importation des logos depuis assets
+import logoBlanc from "@/assets/LogoB_BBlanc.png";
+import logoNoir from "@/assets/LogoB_B-noir.png";
+
 export function Header() {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
@@ -26,6 +30,7 @@ export function Header() {
     { to: "/contact", label: t.nav.contact },
   ] as const;
 
+  // Détermine si on est en mode "clair sur sombre" (Header transparent sur la Home)
   const onDark = isHome && !scrolled;
 
   return (
@@ -40,11 +45,22 @@ export function Header() {
       )}
     >
       <div className="container-luxe flex items-center justify-between h-20">
-        <Link to="/" className={cn("font-display text-2xl tracking-wide", onDark ? "text-white" : "text-foreground")}>
-          B<span className="opacity-60">&amp;</span>B
-          <span className="ml-2 hidden sm:inline text-xs tracking-[0.3em] opacity-70">HAMMAMET</span>
+        {/* Zone du Logo */}
+        <Link to="/" className="flex items-center gap-3">
+          <img 
+            src={onDark ? logoBlanc : logoNoir} 
+            alt="B&B Hammamet Oasis" 
+            className="h-20 w-auto transition-all duration-500"
+          />
+          <span className={cn(
+            "hidden sm:inline text-[10px] tracking-[0.4em] uppercase transition-colors duration-500",
+            onDark ? "text-white/80" : "text-foreground/80"
+          )}>
+            
+          </span>
         </Link>
 
+        {/* Navigation Desktop */}
         <nav className="hidden md:flex items-center gap-10">
           {links.map((l) => (
             <Link
@@ -62,14 +78,15 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-4">
+        {/* Actions Desktop */}
+        <div className="hidden md:flex items-center gap-6">
           <LangSwitch className={onDark ? "text-white" : ""} />
           <Link
             to="/contact"
             className={cn(
-              "inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase border px-4 py-2.5 transition-colors",
+              "inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase border px-5 py-2.5 transition-all duration-300",
               onDark
-                ? "border-white/40 text-white hover:bg-white hover:text-foreground"
+                ? "border-white/40 text-white hover:bg-white hover:text-black"
                 : "border-foreground text-foreground hover:bg-foreground hover:text-background"
             )}
           >
@@ -78,8 +95,9 @@ export function Header() {
           </Link>
         </div>
 
+        {/* Bouton Menu Mobile */}
         <button
-          className={cn("md:hidden p-2", onDark ? "text-white" : "text-foreground")}
+          className={cn("md:hidden p-2 transition-colors", onDark ? "text-white" : "text-foreground")}
           onClick={() => setOpen((v) => !v)}
           aria-label="Menu"
         >
@@ -87,17 +105,18 @@ export function Header() {
         </button>
       </div>
 
+      {/* Menu Mobile */}
       {open && (
-        <div className="md:hidden bg-background border-t border-border">
-          <div className="container-luxe py-6 flex flex-col gap-5">
+        <div className="md:hidden bg-background border-t border-border animate-in fade-in slide-in-from-top-4">
+          <div className="container-luxe py-8 flex flex-col gap-6">
             {links.map((l) => (
-              <Link key={l.to} to={l.to} onClick={() => setOpen(false)} className="text-base">
+              <Link key={l.to} to={l.to} onClick={() => setOpen(false)} className="text-lg tracking-wide">
                 {l.label}
               </Link>
             ))}
-            <div className="flex items-center justify-between pt-4 border-t border-border">
+            <div className="flex items-center justify-between pt-6 border-t border-border">
               <LangSwitch />
-              <Link to="/contact" onClick={() => setOpen(false)} className="text-xs tracking-[0.2em] uppercase border border-foreground px-4 py-2.5">
+              <Link to="/contact" onClick={() => setOpen(false)} className="text-[10px] tracking-[0.2em] uppercase border border-foreground px-5 py-2.5">
                 {t.nav.check}
               </Link>
             </div>
