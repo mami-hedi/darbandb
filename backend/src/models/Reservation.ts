@@ -9,6 +9,7 @@ export class Reservation extends Model {
   public phone?: string;
   public checkInDate!: Date;
   public checkOutDate!: Date;
+  public numberOfGuests!: number; // <-- Ajouté pour TypeScript
   public totalPrice!: number;
   public status!: 'pending' | 'confirmed' | 'cancelled';
 }
@@ -25,6 +26,11 @@ export const initReservationModel = (sequelize: Sequelize) => {
       checkInDate: { type: DataTypes.DATE, allowNull: false },
       checkOutDate: { type: DataTypes.DATE, allowNull: false },
       totalPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+      numberOfGuests: { // Le champ est bien là
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 2
+      },
       status: { 
         type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'), 
         defaultValue: 'pending' 

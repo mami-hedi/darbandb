@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { ReservationService } from '../services/reservationService'; // Import du nouveau service
-import { EmailService } from '../services/emailService'; // Import de l'email service
+import { ReservationService } from '../services/reservationService';
+import { EmailService } from '../services/emailService';
 import { Op } from 'sequelize';
 import { Reservation as ReservationModel } from '../models/Reservation';
 
@@ -11,60 +11,53 @@ export class AvailabilityController {
   constructor() {
     this.reservationService = new ReservationService();
     this.emailService = new EmailService();
+    
+    // Bind des méthodes pour ne pas perdre le 'this' dans les routes Express
+    this.getMonthCalendar = this.getMonthCalendar.bind(this);
+    this.checkDateRange = this.checkDateRange.bind(this);
+    this.calculatePrice = this.calculatePrice.bind(this);
+    this.getReservedDates = this.getReservedDates.bind(this);
   }
-  
-  
 
-  // ============================================
-  // GET: Obtenir le calendrier d'un mois
-  // ============================================
+  /**
+   * GET: Obtenir le calendrier complet d'un mois avec états de disponibilité
+   */
   async getMonthCalendar(req: Request, res: Response) {
     try {
       const { year, month } = req.query;
 
       if (!year || !month) {
-        return res.status(400).json({
-          success: false,
-          error: 'year et month sont requis',
-        });
+        return res.status(400).json({ success: false, error: 'Paramètres year et month requis' });
       }
 
       const yearNum = parseInt(year as string);
       const monthNum = parseInt(month as string);
 
-      // Validation
-      if (monthNum < 1 || monthNum > 12) {
-        return res.status(400).json({
-          success: false,
-          error: 'Mois invalide (1-12)',
-        });
+      if (isNaN(yearNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ success: false, error: 'Format de date invalide' });
       }
 
       const calendar = await this.generateCalendar(yearNum, monthNum);
 
-      res.json({
+      return res.json({
         success: true,
         data: calendar,
-        year: yearNum,
-        month: monthNum,
+        meta: { year: yearNum, month: monthNum }
       });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  // ============================================
-  // GET: Vérifier la disponibilité d'une plage de dates
-  // ============================================
+  /**
+   * GET: Vérifier si une plage spécifique est libre
+   */
   async checkDateRange(req: Request, res: Response) {
     try {
       const { checkIn, checkOut } = req.query;
 
       if (!checkIn || !checkOut) {
-        return res.status(400).json({
-          success: false,
-          error: 'checkIn et checkOut sont requis',
-        });
+        return res.status(400).json({ success: false, error: 'Dates manquantes' });
       }
 
       const isAvailable = await this.reservationService.checkAvailability(
@@ -72,127 +65,89 @@ export class AvailabilityController {
         checkOut as string
       );
 
-      res.json({
+      return res.json({
         success: true,
         available: isAvailable,
-        checkIn,
-        checkOut,
+        range: { checkIn, checkOut }
       });
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, error: error.message });
     }
   }
 
-  // ============================================
-  // GET: Obtenir les dates réservées
-  // ============================================
-  async getReservedDates(req: Request, res: Response) {
-    try {
-      const { year, month } = req.query;
-
-      if (!year || !month) {
-        return res.status(400).json({
-          success: false,
-          error: 'year et month sont requis',
-        });
-      }
-
-      const yearNum = parseInt(year as string);
-      const monthNum = parseInt(month as string);
-
-      const startDate = new Date(yearNum, monthNum - 1, 1);
-      const endDate = new Date(yearNum, monthNum, 0);
-
-      // Chercher les réservations confirmées du mois
-      const reservations = await ReservationModel.findAll({
-        where: {
-          status: { [Op.in]: ['pending', 'confirmed'] },
-          checkInDate: { [Op.lte]: endDate },
-          checkOutDate: { [Op.gte]: startDate },
-        },
-        attributes: ['checkInDate', 'checkOutDate'],
-        raw: true,
-      });
-
-      // Générer les dates occupées
-      const occupiedDates = this.generateOccupiedDates(
-        reservations as any,
-        yearNum,
-        monthNum
-      );
-
-      res.json({
-        success: true,
-        data: occupiedDates,
-        year: yearNum,
-        month: monthNum,
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  }
-
-  // ============================================
-  // GET: Tarif pour une plage de dates
-  // ============================================
+  /**
+   * GET: Calculer le prix total basé sur les nuits
+   */
   async calculatePrice(req: Request, res: Response) {
     try {
       const { checkIn, checkOut } = req.query;
 
       if (!checkIn || !checkOut) {
-        return res.status(400).json({
-          success: false,
-          error: 'checkIn et checkOut sont requis',
-        });
+        return res.status(400).json({ success: false, error: 'Dates manquantes' });
       }
 
-      const checkInDate = new Date(checkIn as string);
-      const checkOutDate = new Date(checkOut as string);
+      const start = new Date(checkIn as string);
+      const end = new Date(checkOut as string);
 
-      if (checkInDate >= checkOutDate) {
-        return res.status(400).json({
-          success: false,
-          error: 'Dates invalides',
-        });
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+        return res.status(400).json({ success: false, error: 'Plage de dates invalide' });
       }
 
-      const pricePerNight = parseFloat(
-        process.env.PROPERTY_PRICE_PER_NIGHT || '150'
-      );
-      const msPerDay = 24 * 60 * 60 * 1000;
-      const nights = Math.round(
-        (checkOutDate.getTime() - checkInDate.getTime()) / msPerDay
-      );
+      const pricePerNight = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      const totalPrice = nights * pricePerNight;
-
-      res.json({
+      return res.json({
         success: true,
         data: {
-          checkIn: checkInDate.toISOString().split('T')[0],
-          checkOut: checkOutDate.toISOString().split('T')[0],
           nights,
           pricePerNight,
-          totalPrice,
-        },
+          totalPrice: nights * pricePerNight,
+          currency: 'EUR'
+        }
       });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * GET: Liste simple des dates occupées (format string[])
+   */
+  async getReservedDates(req: Request, res: Response) {
+    try {
+      const { year, month } = req.query;
+      const startDate = new Date(Number(year), Number(month) - 1, 1);
+      const endDate = new Date(Number(year), Number(month), 0);
+
+      const reservations = await ReservationModel.findAll({
+        where: {
+          status: { [Op.in]: ['pending', 'confirmed'] },
+          [Op.or]: [
+            { checkInDate: { [Op.between]: [startDate, endDate] } },
+            { checkOutDate: { [Op.between]: [startDate, endDate] } }
+          ]
+        },
+        attributes: ['checkInDate', 'checkOutDate'],
+        raw: true
+      });
+
+      const occupied = this.extractOccupiedDates(reservations as any);
+      return res.json({ success: true, data: occupied });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
     }
   }
 
   // ============================================
-  // MÉTHODES PRIVÉES
+  // LOGIQUE PRIVÉE OPTIMISÉE
   // ============================================
 
-  private async generateCalendar(year: number, month: number): Promise<any[]> {
-    // Récupérer les dates réservées
+  private async generateCalendar(year: number, month: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    // 1. Récupérer les réservations
     const reservations = await ReservationModel.findAll({
       where: {
         status: { [Op.in]: ['pending', 'confirmed'] },
@@ -200,73 +155,49 @@ export class AvailabilityController {
         checkOutDate: { [Op.gte]: startDate },
       },
       attributes: ['checkInDate', 'checkOutDate'],
-      raw: true,
+      raw: true
     });
 
-    // Générer les données du calendrier
+    // 2. Créer un Set pour une recherche en O(1)
+    const occupiedSet = new Set(this.extractOccupiedDates(reservations as any));
+
+    // 3. Générer le mois
     const daysInMonth = endDate.getDate();
     const calendar = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
-      const dateStr = date.toISOString().split('T')[0];
-
-      // Vérifier si la date est occupée
-      const isOccupied = this.isDateOccupied(date, reservations as any);
+      // Format YYYY-MM-DD sécurisé
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateObj = new Date(year, month - 1, day);
 
       calendar.push({
         date: dateStr,
         day,
         month,
         year,
-        available: !isOccupied,
-        dayOfWeek: date.getDay(),
-        dayName: this.getDayName(date.getDay()),
+        available: !occupiedSet.has(dateStr),
+        dayOfWeek: dateObj.getDay(),
+        dayName: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][dateObj.getDay()]
       });
     }
 
     return calendar;
   }
 
-  private generateOccupiedDates(
-    reservations: Array<{ checkInDate: Date; checkOutDate: Date }>,
-    year: number,
-    month: number
-  ): string[] {
-    const occupiedDates: Set<string> = new Set();
+  private extractOccupiedDates(reservations: any[]): string[] {
+    const dates = new Set<string>();
 
-    for (const reservation of reservations) {
-      const checkIn = new Date(reservation.checkInDate);
-      const checkOut = new Date(reservation.checkOutDate);
+    reservations.forEach(res => {
+      let current = new Date(res.checkInDate);
+      const end = new Date(res.checkOutDate);
 
-      // Ajouter toutes les dates entre checkIn et checkOut
-      let currentDate = new Date(checkIn);
-      while (currentDate < checkOut) {
-        if (
-          currentDate.getFullYear() === year &&
-          currentDate.getMonth() === month - 1
-        ) {
-          occupiedDates.add(currentDate.toISOString().split('T')[0]);
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
+      // On boucle pour chaque nuit de la réservation
+      while (current < end) {
+        dates.add(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
       }
-    }
+    });
 
-    return Array.from(occupiedDates);
-  }
-
-  private isDateOccupied(
-    date: Date,
-    reservations: Array<{ checkInDate: Date; checkOutDate: Date }>
-  ): boolean {
-    return reservations.some(
-      (res) =>
-        new Date(res.checkInDate) <= date && date < new Date(res.checkOutDate)
-    );
-  }
-
-  private getDayName(dayOfWeek: number): string {
-    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-    return days[dayOfWeek];
+    return Array.from(dates);
   }
 }
