@@ -26,12 +26,41 @@ export const dict = {
       title: "Quatre suites d'exception",
       sub: "Chaque chambre est une invitation au calme, mêlant matériaux bruts et confort moderne.",
       viewDetails: "Voir les détails",
+      back: "Retour aux suites",
+      bookCta: "Réserver cette suite",
+      amenitiesTitle: "Équipements de la suite",
       items: [
         { id: "suite-azur", t: "Suite Azur", d: "Vue panoramique sur le golfe." },
         { id: "suite-olive", t: "Suite Olive", d: "Sérénité et tons organiques." },
         { id: "suite-jasmin", t: "Suite Jasmin", d: "Lumière et accès patio." },
         { id: "suite-ambre", t: "Suite Ambre", d: "Chaleur des matières nobles." },
-      ]
+      ],
+      details: {
+        "suite-azur": {
+          title: "Suite Azur",
+          tagline: "Vue mer & Sérénité",
+          description: "Plongez dans un havre de paix aux nuances méditerranéennes. La Suite Azur offre des volumes généreux, une lumière naturelle traversante et des finitions haut de gamme alliant le bois noble à la pureté du blanc.",
+          specs: ["Superficie : 45m²", "Lit King Size double", "Terrasse privée vue piscine", "Salle de bain en marbre"]
+        },
+        "suite-olive": {
+          title: "Suite Olive",
+          tagline: "Douceur & Authenticité",
+          description: "Inspirée des oliviers centenaires de la région, cette suite associe des textures organiques à des lignes contemporaines épurées. Un espace chaleureux propice à la détente absolue.",
+          specs: ["Superficie : 42m²", "Lit King Size double", "Espace salon intégré", "Douche à l'italienne en pierre"]
+        },
+        "suite-jasmin": {
+          title: "Suite Jasmin",
+          tagline: "Élégance & Parfum d'Orient",
+          description: "Véritable hommage à la fleur emblématique d'Hammamet, la Suite Jasmin marie subtilement touches artisanales locales et confort moderne absolu. Un cocon de douceur très lumineux.",
+          specs: ["Superficie : 40m²", "Lit de luxe double", "Vue jardin aromatique", "Baignoire îlot autoportante"]
+        },
+        "suite-ambre": {
+          title: "Suite Ambre",
+          tagline: "Lumière dorée & Raffinement",
+          description: "La Suite Ambre séduit par ses teintes chaleureuses et son atmosphère intimiste. Ses détails en noir mat et bois brûlé contrastent magnifiquement avec la clarté de l'architecture moderne.",
+          specs: ["Superficie : 50m²", "Lit King Size", "Salon privé indépendant", "Accès direct solarium"]
+        }
+      }
     },
     wine: {
       eyebrow: "Expérience",
@@ -82,12 +111,41 @@ export const dict = {
       title: "Four exceptional suites",
       sub: "Each room is an invitation to peace, blending raw materials with modern comfort.",
       viewDetails: "View details",
+      back: "Back to suites",
+      bookCta: "Book this suite",
+      amenitiesTitle: "Suite Amenities",
       items: [
         { id: "suite-azur", t: "Azur Suite", d: "Panoramic views of the gulf." },
         { id: "suite-olive", t: "Olive Suite", d: "Serenity and organic tones." },
         { id: "suite-jasmin", t: "Jasmin Suite", d: "Light and patio access." },
         { id: "suite-ambre", t: "Amber Suite", d: "Warmth of noble materials." },
-      ]
+      ],
+      details: {
+        "suite-azur": {
+          title: "Azur Suite",
+          tagline: "Sea view & Serenity",
+          description: "Immerse yourself in a haven of peace with Mediterranean hues. The Azur Suite offers generous volumes, ambient natural light, and high-end finishes blending noble wood with pure whites.",
+          specs: ["Size: 45sqm", "Double King Size bed", "Private terrace with pool view", "Marble bathroom"]
+        },
+        "suite-olive": {
+          title: "Olive Suite",
+          tagline: "Softness & Authenticity",
+          description: "Inspired by the region's century-old olive trees, this suite pairs organic textures with sleek contemporary lines. A warm, welcoming space designed for pure relaxation.",
+          specs: ["Size: 42sqm", "Double King Size bed", "Integrated lounge area", "Walk-in stone shower"]
+        },
+        "suite-jasmin": {
+          title: "Jasmin Suite",
+          tagline: "Elegance & Eastern scent",
+          description: "A true tribute to the iconic flower of Hammamet, the Jasmin Suite subtly blends local craftsmanship touches with absolute modern comfort. A very bright and soft cocoon.",
+          specs: ["Size: 40sqm", "Deluxe double bed", "Aromatic garden view", "Freestanding island bathtub"]
+        },
+        "suite-ambre": {
+          title: "Amber Suite",
+          tagline: "Golden light & Refinement",
+          description: "The Amber Suite captivates with its warm tones and intimate atmosphere. Matte black and scorched wood details contrast beautifully with the crisp, modern architectural layout.",
+          specs: ["Size: 50sqm", "King Size bed", "Independent private lounge", "Direct solarium access"]
+        }
+      }
     },
     wine: {
       eyebrow: "Experience",

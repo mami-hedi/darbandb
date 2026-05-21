@@ -7,13 +7,17 @@ export const Route = createFileRoute("/blog")({
   component: Blog,
 });
 
+// Centralisation de la route API avec fallback de secours pour le dev local
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 function Blog() {
   const { t, lang } = useLang();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/blog")
+    // Changement de l'URL brute par la variable dynamique
+    fetch(`${API_BASE}/blog`)
       .then((res) => res.json())
       .then((data) => {
         const rawPosts = Array.isArray(data) ? data : [];

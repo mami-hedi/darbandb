@@ -3,10 +3,14 @@ import { ArrowLeft } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
+// Configuration de l'URL de l'API avec fallback pour le dev local
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const Route = createFileRoute("/blog/$slug")({
   loader: async ({ params }) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/blog/${params.slug}`);
+      // Utilisation de la variable d'environnement
+      const res = await fetch(`${API_BASE}/blog/${params.slug}`);
       if (!res.ok) throw notFound();
       const post = await res.json();
       return { post };
@@ -15,15 +19,36 @@ export const Route = createFileRoute("/blog/$slug")({
       throw notFound();
     }
   },
-  head: ({ loaderData }) => ({
-    meta: loaderData?.post
-      ? [
-          { title: `${loaderData.post.title?.fr || "Journal"} — B&B Hammamet` },
-          { name: "description", content: loaderData.post.excerpt?.fr || "" },
-          { property: "og:image", content: loaderData.post.cover },
-        ]
-      : [],
-  }),
+  head: ({ loaderData }) => {
+    if (!loaderData?.post) return { meta: [] };
+
+    const { post } = loaderData;
+    
+    // Extraction sécurisée pour les métadonnées (fallback FR par défaut)
+    const getMetaString = (field: any) => {
+      if (!field) return "";
+      if (typeof field === "string") {
+        try {
+          const parsed = JSON.parse(field);
+          return parsed.fr || parsed.en || "";
+        } catch {
+          return field;
+        }
+      }
+      return field.fr || field.en || "";
+    };
+
+    const metaTitle = getMetaString(post.title) || "Journal";
+    const metaDescription = getMetaString(post.excerpt);
+
+    return {
+      meta: [
+        { title: `${metaTitle} — B&B Hammamet` },
+        { name: "description", content: metaDescription },
+        { property: "og:image", content: post.cover },
+      ],
+    };
+  },
   notFoundComponent: () => (
     <SiteLayout>
       <div className="container-luxe py-32 text-center">

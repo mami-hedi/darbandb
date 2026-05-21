@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { TrendingUp, BedDouble, Users as UsersIcon, Euro, Loader2 } from "lucide-react";
 
+// Centralisation de l'URL de l'API (S'adapte automatiquement entre dev et prod)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const Route = createFileRoute("/admin/")({
   component: Dashboard,
 });
@@ -30,8 +33,9 @@ function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // L'URL combine ton port backend, ton préfixe API et ta route spécifique
-        const response = await fetch("http://localhost:5000/api/reservations/admin/stats");
+        
+        // Utilisation de la variable d'environnement dynamique
+        const response = await fetch(`${API_BASE}/reservations/admin/stats`);
         
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -45,7 +49,7 @@ function Dashboard() {
           setError("Impossible de charger les statistiques");
         }
       } catch (err) {
-        setError("Erreur de connexion au serveur (Vérifiez que le backend tourne sur le port 5000)");
+        setError("Erreur de connexion au serveur backend.");
         console.error(err);
       } finally {
         setLoading(false);

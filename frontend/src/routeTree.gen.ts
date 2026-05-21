@@ -16,6 +16,11 @@ import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as SuitesSuiteYasminRouteImport } from './routes/suites/suite-yasmin'
+import { Route as SuitesSuiteOliveRouteImport } from './routes/suites/suite-olive'
+import { Route as SuitesSuiteAzurRouteImport } from './routes/suites/suite-azur'
+import { Route as SuitesSuiteAmbreRouteImport } from './routes/suites/suite-ambre'
+import { Route as SuitesSuiteIdRouteImport } from './routes/suites.$suiteId'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AdminReservationsRouteImport } from './routes/admin.reservations'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -57,6 +62,31 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const SuitesSuiteYasminRoute = SuitesSuiteYasminRouteImport.update({
+  id: '/suites/suite-yasmin',
+  path: '/suites/suite-yasmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuitesSuiteOliveRoute = SuitesSuiteOliveRouteImport.update({
+  id: '/suites/suite-olive',
+  path: '/suites/suite-olive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuitesSuiteAzurRoute = SuitesSuiteAzurRouteImport.update({
+  id: '/suites/suite-azur',
+  path: '/suites/suite-azur',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuitesSuiteAmbreRoute = SuitesSuiteAmbreRouteImport.update({
+  id: '/suites/suite-ambre',
+  path: '/suites/suite-ambre',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuitesSuiteIdRoute = SuitesSuiteIdRouteImport.update({
+  id: '/suites/$suiteId',
+  path: '/suites/$suiteId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
@@ -102,6 +132,11 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/suites/$suiteId': typeof SuitesSuiteIdRoute
+  '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
+  '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-olive': typeof SuitesSuiteOliveRoute
+  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -116,6 +151,11 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/suites/$suiteId': typeof SuitesSuiteIdRoute
+  '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
+  '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-olive': typeof SuitesSuiteOliveRoute
+  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -132,6 +172,11 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/suites/$suiteId': typeof SuitesSuiteIdRoute
+  '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
+  '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-olive': typeof SuitesSuiteOliveRoute
+  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -149,6 +194,11 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/reservations'
     | '/blog/$slug'
+    | '/suites/$suiteId'
+    | '/suites/suite-ambre'
+    | '/suites/suite-azur'
+    | '/suites/suite-olive'
+    | '/suites/suite-yasmin'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,6 +213,11 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/reservations'
     | '/blog/$slug'
+    | '/suites/$suiteId'
+    | '/suites/suite-ambre'
+    | '/suites/suite-azur'
+    | '/suites/suite-olive'
+    | '/suites/suite-yasmin'
     | '/admin'
   id:
     | '__root__'
@@ -178,6 +233,11 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/reservations'
     | '/blog/$slug'
+    | '/suites/$suiteId'
+    | '/suites/suite-ambre'
+    | '/suites/suite-azur'
+    | '/suites/suite-olive'
+    | '/suites/suite-yasmin'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -188,6 +248,11 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRouteWithChildren
   ContactRoute: typeof ContactRoute
   GalleryRoute: typeof GalleryRoute
+  SuitesSuiteIdRoute: typeof SuitesSuiteIdRoute
+  SuitesSuiteAmbreRoute: typeof SuitesSuiteAmbreRoute
+  SuitesSuiteAzurRoute: typeof SuitesSuiteAzurRoute
+  SuitesSuiteOliveRoute: typeof SuitesSuiteOliveRoute
+  SuitesSuiteYasminRoute: typeof SuitesSuiteYasminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +305,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/suites/suite-yasmin': {
+      id: '/suites/suite-yasmin'
+      path: '/suites/suite-yasmin'
+      fullPath: '/suites/suite-yasmin'
+      preLoaderRoute: typeof SuitesSuiteYasminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suites/suite-olive': {
+      id: '/suites/suite-olive'
+      path: '/suites/suite-olive'
+      fullPath: '/suites/suite-olive'
+      preLoaderRoute: typeof SuitesSuiteOliveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suites/suite-azur': {
+      id: '/suites/suite-azur'
+      path: '/suites/suite-azur'
+      fullPath: '/suites/suite-azur'
+      preLoaderRoute: typeof SuitesSuiteAzurRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suites/suite-ambre': {
+      id: '/suites/suite-ambre'
+      path: '/suites/suite-ambre'
+      fullPath: '/suites/suite-ambre'
+      preLoaderRoute: typeof SuitesSuiteAmbreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suites/$suiteId': {
+      id: '/suites/$suiteId'
+      path: '/suites/$suiteId'
+      fullPath: '/suites/$suiteId'
+      preLoaderRoute: typeof SuitesSuiteIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
       id: '/blog/$slug'
@@ -323,6 +423,11 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRouteWithChildren,
   ContactRoute: ContactRoute,
   GalleryRoute: GalleryRoute,
+  SuitesSuiteIdRoute: SuitesSuiteIdRoute,
+  SuitesSuiteAmbreRoute: SuitesSuiteAmbreRoute,
+  SuitesSuiteAzurRoute: SuitesSuiteAzurRoute,
+  SuitesSuiteOliveRoute: SuitesSuiteOliveRoute,
+  SuitesSuiteYasminRoute: SuitesSuiteYasminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
