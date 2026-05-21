@@ -82,7 +82,7 @@ export function Header() {
         <div className="hidden md:flex items-center gap-6">
           <LangSwitch className={onDark ? "text-white" : ""} />
           <Link
-            to="/contact"
+            to="/availability"
             className={cn(
               "inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase border px-5 py-2.5 transition-all duration-300",
               onDark
@@ -116,7 +116,7 @@ export function Header() {
             ))}
             <div className="flex items-center justify-between pt-6 border-t border-border">
               <LangSwitch />
-              <Link to="/contact" onClick={() => setOpen(false)} className="text-[10px] tracking-[0.2em] uppercase border border-foreground px-5 py-2.5">
+              <Link to="/availability" onClick={() => setOpen(false)} className="text-[10px] tracking-[0.2em] uppercase border border-foreground px-5 py-2.5">
                 {t.nav.check}
               </Link>
             </div>

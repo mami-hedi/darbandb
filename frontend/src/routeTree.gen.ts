@@ -21,6 +21,7 @@ import { Route as AdminReservationsRouteImport } from './routes/admin.reservatio
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminClientsRouteImport } from './routes/admin.clients'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
+import { Route as AdminAvailabilityRouteImport } from './routes/admin.availability'
 
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
@@ -76,10 +77,15 @@ const AdminClientsRoute = AdminClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
   getParentRoute: () => AdminRoute,
-} as any)
+} as any).lazy(() => import('./routes/admin.clients.lazy').then((d) => d.Route))
 const AdminBlogRoute = AdminBlogRouteImport.update({
   id: '/blog',
   path: '/blog',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAvailabilityRoute = AdminAvailabilityRouteImport.update({
+  id: '/availability',
+  path: '/availability',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/gallery': typeof GalleryRoute
+  '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/gallery': typeof GalleryRoute
+  '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/gallery': typeof GalleryRoute
+  '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/gallery'
+    | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/gallery'
+    | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/gallery'
+    | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
@@ -264,10 +276,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBlogRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/availability': {
+      id: '/admin/availability'
+      path: '/availability'
+      fullPath: '/admin/availability'
+      preLoaderRoute: typeof AdminAvailabilityRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAvailabilityRoute: typeof AdminAvailabilityRoute
   AdminBlogRoute: typeof AdminBlogRoute
   AdminClientsRoute: typeof AdminClientsRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -276,6 +296,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAvailabilityRoute: AdminAvailabilityRoute,
   AdminBlogRoute: AdminBlogRoute,
   AdminClientsRoute: AdminClientsRoute,
   AdminLoginRoute: AdminLoginRoute,

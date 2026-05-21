@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Play } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
-import g1 from "@/assets/g1.jpg";
-import g2 from "@/assets/g2.jpg";
-import g3 from "@/assets/g3.jpg";
-import g4 from "@/assets/g4.jpg";
-import g5 from "@/assets/g5.jpg";
-import g6 from "@/assets/g6.jpg";
+import g1 from "@/assets/g1.jpeg";
+import g2 from "@/assets/g2.jpeg";
+import g3 from "@/assets/g3.jpeg";
+import g4 from "@/assets/g4.jpeg";
+import g5 from "@/assets/g5.jpeg";
+import g6 from "@/assets/g6.jpeg";
+import g7 from "@/assets/g7.jpeg";
+import g8 from "@/assets/g8.jpeg";
 
 export const Route = createFileRoute("/gallery")({
   head: () => ({
@@ -32,6 +34,8 @@ const items: Item[] = [
   { src: g4, alt: "Salon", type: "image", ratio: "aspect-[3/4]" },
   { src: g5, alt: "Bain", type: "image", ratio: "aspect-[3/4]" },
   { src: g2, alt: "Visite vidéo", type: "video", ratio: "aspect-video" },
+  { src: g7, alt: "Salon", type: "image", ratio: "aspect-[3/4]" },
+  { src: g8, alt: "Bain", type: "image", ratio: "aspect-[3/4]" },
 ];
 
 function Gallery() {

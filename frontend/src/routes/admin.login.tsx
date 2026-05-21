@@ -9,7 +9,8 @@ export const Route = createFileRoute("/admin/login")({
 function Login() {
   const { login } = useAdminAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@bnb-hammamet.tn");
+  // Changement de l'email par défaut pour correspondre à votre demande
+  const [email, setEmail] = useState("hedimemi@gmail.com");
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState("");
 
@@ -18,8 +19,14 @@ function Login() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (login(email, pwd)) navigate({ to: "/admin" });
-          else setErr("Identifiants invalides (mot de passe ≥ 4 caractères)");
+          
+          // Vérification stricte de l'email et du mot de passe
+          if (email === "hedimemi@gmail.com" && pwd === "123456789") {
+            login(email, pwd); // Appel de votre fonction de connexion existante
+            navigate({ to: "/admin" });
+          } else {
+            setErr("Identifiants invalides.");
+          }
         }}
         className="w-full max-w-md bg-background border border-border p-10"
       >
@@ -39,7 +46,8 @@ function Login() {
           <button type="submit" className="w-full bg-foreground text-background py-3.5 text-xs tracking-[0.25em] uppercase hover:opacity-90">
             Se connecter
           </button>
-          <p className="text-xs text-muted-foreground text-center">Démo : tout email + mot de passe ≥ 4 caractères</p>
+          {/* Texte de description mis à jour */}
+          <p className="text-xs text-muted-foreground text-center">Accès réservé à l'administrateur</p>
         </div>
       </form>
     </div>

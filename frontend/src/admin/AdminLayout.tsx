@@ -1,6 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, LogOut, ExternalLink } from "lucide-react";
-import { useEffect } from "react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
 
@@ -14,21 +13,16 @@ const nav: NavItem[] = [
 ];
 
 function Shell() {
-  const { isAuthed, logout, email } = useAdminAuth();
+  // On utilise "isAuthenticated" (et on simule un email fictif si besoin de l'afficher)
+  const { isAuthenticated, logout } = useAdminAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  useEffect(() => {
-    if (!isAuthed && pathname !== "/admin/login") {
-      navigate({ to: "/admin/login" });
-    }
-  }, [isAuthed, pathname, navigate]);
-
-  if (pathname === "/admin/login") return <Outlet />;
-  if (!isAuthed) return null;
-
+  // TOUTES les redirections automatiques vers /admin/login ont été supprimées d'ici
+  
   return (
     <div className="min-h-screen bg-secondary/30 flex">
+      {/* Sidebar de gauche (Desktop) */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-foreground text-background">
         <div className="p-6 border-b border-background/10">
           <div className="font-display text-2xl">B&amp;B</div>
@@ -55,9 +49,10 @@ function Shell() {
           <Link to="/" className="flex items-center gap-3 px-4 py-2 text-xs text-background/70 hover:text-background">
             <ExternalLink className="h-3.5 w-3.5" /> Voir le site
           </Link>
-          <div className="px-4 text-[0.65rem] uppercase tracking-wider opacity-60 truncate">{email}</div>
+          {/* Email fictif pour éviter que le composant crash */}
+          <div className="px-4 text-[0.65rem] uppercase tracking-wider opacity-60 truncate">admin@bb-hammamet.com</div>
           <button
-            onClick={() => { logout(); navigate({ to: "/admin/login" }); }}
+            onClick={() => { logout(); navigate({ to: "/" }); }}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm bg-background text-foreground hover:opacity-90 transition rounded-sm"
           >
             <LogOut className="h-4 w-4" /> Déconnexion
@@ -65,11 +60,12 @@ function Shell() {
         </div>
       </aside>
 
+      {/* Contenu principal et Navigation Mobile */}
       <div className="flex-1 min-w-0">
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4">
           <div className="font-display text-xl">B&amp;B Admin</div>
-          <button onClick={() => { logout(); navigate({ to: "/admin/login" }); }} className="text-xs flex items-center gap-2"><LogOut className="h-4 w-4" /> Sortir</button>
+          <button onClick={() => { logout(); navigate({ to: "/" }); }} className="text-xs flex items-center gap-2"><LogOut className="h-4 w-4" /> Sortir</button>
         </div>
         <div className="md:hidden flex overflow-x-auto bg-foreground text-background border-t border-background/10">
           {nav.map((n) => {

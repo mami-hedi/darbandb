@@ -8,7 +8,7 @@ export function Footer() {
     <footer className="mt-32 border-t border-border bg-secondary/40">
       <div className="container-luxe py-16 grid md:grid-cols-4 gap-10">
         <div className="md:col-span-2">
-          <div className="font-display text-3xl">B&amp;B Hammamet</div>
+          <div className="font-display text-3xl">Dar B&amp;B</div>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground leading-relaxed">
             {t.footer.made}. Avenue de la Plage, 8050 Hammamet, Tunisie.
           </p>
@@ -32,13 +32,12 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>+216 72 000 000</li>
             <li>hello@bnb-hammamet.tn</li>
-            <li><Link to="/admin" className="hover:underline text-foreground">{t.nav.admin}</Link></li>
           </ul>
         </div>
       </div>
       <div className="hairline">
         <div className="container-luxe py-6 flex flex-col md:flex-row justify-between gap-2 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} B&amp;B Hammamet — {t.footer.rights}.</span>
+          <span>© {new Date().getFullYear()} Dar B&amp;B  — {t.footer.rights}.</span>
           <span>Hammamet · Tunisie</span>
         </div>
       </div>
