@@ -28,26 +28,14 @@ export const Route = createFileRoute("/contact")({
   component: Contact,
 });
 
+// Utilisation des variables d'environnement de Vite
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 function Contact() {
   const { t } = useLang();
   const { checkIn, checkOut } = useSearch({ from: "/contact" });
   const [sent, setSent] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    guests: "2",
-    arrival: checkIn ? formatDateForInput(checkIn) : "",
-    departure: checkOut ? formatDateForInput(checkOut) : "",
-    message: "",
-  });
-
-  const AIRBNB_URL = "https://www.airbnb.com/h/votre-villa-hammamet";
-
-  // Coordonnées pour Dar d'Art
-  const mapUrl = `https://maps.google.com/maps?q=36.4101,10.5593&z=16&output=embed`;
-
+  
   // Formater la date depuis le calendrier au format input HTML
   function formatDateForInput(dateStr: string): string {
     const date = new Date(dateStr);
@@ -64,29 +52,43 @@ function Contact() {
     });
   }
 
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    guests: "2",
+    arrival: checkIn ? formatDateForInput(checkIn) : "",
+    departure: checkOut ? formatDateForInput(checkOut) : "",
+    message: "",
+  });
+
+  const AIRBNB_URL = "https://www.airbnb.com/h/votre-villa-hammamet";
+
+  // Coordonnées pour Dar d'Art
+  const mapUrl = `https://maps.google.com/maps?q=36.4101,10.5593&z=16&output=embed`;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/reservations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            numberOfGuests: parseInt(formData.guests),
-            checkInDate: new Date(formData.arrival),
-            checkOutDate: new Date(formData.departure),
-            specialRequests: formData.message,
-          }),
-        }
-      );
+      // Correction de la route avec API_BASE (Vite)
+      const response = await fetch(`${API_BASE}/reservations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          numberOfGuests: parseInt(formData.guests),
+          checkInDate: new Date(formData.arrival),
+          checkOutDate: new Date(formData.departure),
+          specialRequests: formData.message,
+        }),
+      });
 
       if (response.ok) {
         setSent(true);
@@ -303,27 +305,24 @@ function Contact() {
               <Mail className="h-4 w-4 mt-0.5" /> hello@bnb-hammamet.tn
             </li>
           </ul>
-
-          
-          {/* CARTE GOOGLE MAPS CORRIGÉE */}
-          
         </aside>
       </section>
+      
+      {/* SECTION GEOLOCALISATION */}
       <section className="w-full h-[500px] overflow-hidden border-y border-stone-200 group relative">
-  <iframe
-    title="Carte Dar d'Art"
-    src={mapUrl}
-    className="h-full w-full grayscale contrast-[1.1] opacity-80 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
-    style={{ border: 0 }}
-    loading="lazy"
-    allowFullScreen
-  />
-  {/* Optionnel : Overlay avec l'adresse en flottant */}
-  <div className="absolute bottom-10 left-10 bg-white p-6 shadow-xl hidden md:block">
-    <p className="text-[10px] tracking-widest uppercase font-bold">Localisation</p>
-    <p className="text-sm text-stone-500">Résidence Dar d'Art, Hammamet</p>
-  </div>
-</section>
+        <iframe
+          title="Carte Dar d'Art"
+          src={mapUrl}
+          className="h-full w-full grayscale contrast-[1.1] opacity-80 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+        />
+        <div className="absolute bottom-10 left-10 bg-white p-6 shadow-xl hidden md:block">
+          <p className="text-[10px] tracking-widest uppercase font-bold">Localisation</p>
+          <p className="text-sm text-stone-500">Résidence Dar d'Art, Hammamet</p>
+        </div>
+      </section>
     </SiteLayout>
   );
 }

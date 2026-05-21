@@ -19,7 +19,8 @@ function AdminAvailabilityPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [note, setNote] = useState('');
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // Correction : Utilisation du formalisme de Vite pour les variables d'environnement
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   const handleOpenModal = (date: string) => {
     setSelectedDate(date);
@@ -38,7 +39,8 @@ function AdminAvailabilityPage() {
 
       if (response.ok) {
         const newBlock: BlockedDate = {
-          id: Math.random().toString(36).substr(2, 9),
+          // Correction : Utilisation de slice() à la place de substr() qui est déprécié
+          id: Math.random().toString(36).slice(2, 11),
           date: selectedDate,
           note: note || "Indisponible",
         };

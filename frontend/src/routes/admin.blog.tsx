@@ -7,7 +7,9 @@ export const Route = createFileRoute('/admin/blog')({
   component: AdminBlog,
 });
 
-const API_URL = "http://localhost:5000/api/blog";
+// Gestion dynamique de l'URL de l'API (S'adapte automatiquement entre dev et prod)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = `${API_BASE}/blog`;
 
 const INITIAL_STATE = {
   slug: '',
@@ -29,29 +31,29 @@ function AdminBlog() {
   }, []);
 
   const fetchPosts = async () => {
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error("Erreur réseau");
-    const data = await res.json();
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error("Erreur réseau");
+      const data = await res.json();
 
-    // Nettoyage de sécurité
-    const cleanedPosts = (Array.isArray(data) ? data : []).map(post => ({
-      ...post,
-      title: typeof post.title === 'string' ? JSON.parse(post.title) : post.title,
-      excerpt: typeof post.excerpt === 'string' ? JSON.parse(post.excerpt) : post.excerpt,
-      body: typeof post.body === 'string' ? JSON.parse(post.body) : post.body,
-    }));
+      // Nettoyage de sécurité
+      const cleanedPosts = (Array.isArray(data) ? data : []).map(post => ({
+        ...post,
+        title: typeof post.title === 'string' ? JSON.parse(post.title) : post.title,
+        excerpt: typeof post.excerpt === 'string' ? JSON.parse(post.excerpt) : post.excerpt,
+        body: typeof post.body === 'string' ? JSON.parse(post.body) : post.body,
+      }));
 
-    setPosts(cleanedPosts);
-  } catch (err) {
-    console.error("Fetch error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+      setPosts(cleanedPosts);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+    preventDefault();
     if (!editing) return;
 
     // Validation stricte

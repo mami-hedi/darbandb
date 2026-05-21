@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
+// Centralisation de l'URL de l'API (Fallback sur localhost en dev)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export type Reservation = {
   id: string;
   refNumber: string;
@@ -27,7 +30,7 @@ function ReservationsPage() {
 
   const fetchReservations = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/reservations");
+      const response = await fetch(`${API_BASE}/reservations`);
       const result = await response.json();
       if (result.success) setData(result.data);
     } catch (error) {
@@ -37,12 +40,14 @@ function ReservationsPage() {
     }
   };
 
-  useEffect(() => { fetchReservations(); }, []);
+  useEffect(() => {
+    fetchReservations();
+  }, []);
 
-  // Fonction de mise à jour générique (pour n'importe quel champ)
+  // Fonction de mise à jour générique
   const handleUpdate = async (id: string, fields: Partial<Reservation>) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reservations/${id}`, {
+      const response = await fetch(`${API_BASE}/reservations/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fields),
@@ -50,9 +55,8 @@ function ReservationsPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // On met à jour l'état local avec la réponse du serveur (qui a recalculé le prix)
+        // Mise à jour de l'état local avec le prix recalculé par le serveur
         setData((prev) => prev.map((r) => (r.id === id ? result.data : r)));
-        setEditingId(null);
       }
     } catch (error) {
       alert("Erreur lors de la modification");
@@ -72,7 +76,14 @@ function ReservationsPage() {
         </div>
         <div className="flex gap-2 text-xs">
           {(["all", "pending", "confirmed", "cancelled"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)} className={cn("px-4 py-2 border transition-all", filter === f ? "bg-foreground text-background border-foreground" : "border-border hover:bg-secondary")}>
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-4 py-2 border transition-all",
+                filter === f ? "bg-foreground text-background border-foreground" : "border-border hover:bg-secondary"
+              )}
+            >
               {f === "all" ? "Toutes" : f === "pending" ? "En attente" : f === "confirmed" ? "Confirmées" : "Annulées"}
             </button>
           ))}
@@ -98,17 +109,17 @@ function ReservationsPage() {
               return (
                 <tr key={r.id} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors">
                   <td className="p-4 font-mono text-[10px] text-muted-foreground">{r.refNumber}</td>
-                  
+
                   {/* CLIENT : Nom & Prénom */}
                   <td className="p-4">
                     {isEditing ? (
                       <div className="flex flex-col gap-1">
-                        <input 
+                        <input
                           className="border border-border px-2 py-1 text-xs outline-none focus:border-foreground"
                           defaultValue={r.firstName}
                           onBlur={(e) => handleUpdate(r.id, { firstName: e.target.value })}
                         />
-                        <input 
+                        <input
                           className="border border-border px-2 py-1 text-xs outline-none focus:border-foreground"
                           defaultValue={r.lastName}
                           onBlur={(e) => handleUpdate(r.id, { lastName: e.target.value })}
@@ -116,55 +127,64 @@ function ReservationsPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="font-medium">{r.firstName} {r.lastName}</div>
+                        <div className="font-medium">
+                          {r.firstName} {r.lastName}
+                        </div>
                         <div className="text-[11px] text-muted-foreground">{r.email}</div>
                       </>
                     )}
                   </td>
 
-                  {/* DATES */}
+                  {/* DATES : Corrigé avec onBlur pour éviter le spam d'API au clic */}
                   <td className="p-4 text-xs">
                     {isEditing ? (
                       <div className="flex flex-col gap-1">
-                        <input 
+                        <input
                           type="date"
                           className="border border-border px-1 text-[10px]"
-                          defaultValue={new Date(r.checkInDate).toISOString().split('T')[0]}
-                          onChange={(e) => handleUpdate(r.id, { checkInDate: e.target.value })}
+                          defaultValue={new Date(r.checkInDate).toISOString().split("T")[0]}
+                          onBlur={(e) => handleUpdate(r.id, { checkInDate: e.target.value })}
                         />
-                        <input 
+                        <input
                           type="date"
                           className="border border-border px-1 text-[10px]"
-                          defaultValue={new Date(r.checkOutDate).toISOString().split('T')[0]}
-                          onChange={(e) => handleUpdate(r.id, { checkOutDate: e.target.value })}
+                          defaultValue={new Date(r.checkOutDate).toISOString().split("T")[0]}
+                          onBlur={(e) => handleUpdate(r.id, { checkOutDate: e.target.value })}
                         />
                       </div>
                     ) : (
-                      <span>{new Date(r.checkInDate).toLocaleDateString()} → {new Date(r.checkOutDate).toLocaleDateString()}</span>
+                      <span>
+                        {new Date(r.checkInDate).toLocaleDateString()} →{" "}
+                        {new Date(r.checkOutDate).toLocaleDateString()}
+                      </span>
                     )}
                   </td>
 
                   {/* PERSONNES */}
                   <td className="p-4 text-center">
                     {isEditing ? (
-                      <input 
+                      <input
                         type="number"
                         className="w-12 border border-border text-center text-xs"
                         defaultValue={r.numberOfGuests}
-                        onBlur={(e) => handleUpdate(r.id, { numberOfGuests: parseInt(e.target.value) })}
+                        onBlur={(e) => handleUpdate(r.id, { numberOfGuests: parseInt(e.target.value) || r.numberOfGuests })}
                       />
-                    ) : r.numberOfGuests}
+                    ) : (
+                      r.numberOfGuests
+                    )}
                   </td>
 
                   {/* PRIX TOTAL */}
                   <td className="p-4 font-medium">{r.totalPrice} €</td>
 
                   {/* STATUT */}
-                  <td className="p-4"><StatusBadge s={r.status} /></td>
+                  <td className="p-4">
+                    <StatusBadge s={r.status} />
+                  </td>
 
                   {/* ACTIONS */}
                   <td className="p-4 text-right space-x-3">
-                    <button 
+                    <button
                       onClick={() => setEditingId(isEditing ? null : r.id)}
                       className="text-[10px] uppercase font-bold hover:underline"
                     >
@@ -173,10 +193,20 @@ function ReservationsPage() {
                     {!isEditing && (
                       <>
                         {r.status !== "confirmed" && (
-                          <button onClick={() => handleUpdate(r.id, { status: "confirmed" })} className="text-[10px] uppercase text-blue-600 underline">Confirmer</button>
+                          <button
+                            onClick={() => handleUpdate(r.id, { status: "confirmed" })}
+                            className="text-[10px] uppercase text-blue-600 underline"
+                          >
+                            Confirmer
+                          </button>
                         )}
                         {r.status !== "cancelled" && (
-                          <button onClick={() => handleUpdate(r.id, { status: "cancelled" })} className="text-[10px] uppercase text-destructive underline">Annuler</button>
+                          <button
+                            onClick={() => handleUpdate(r.id, { status: "cancelled" })}
+                            className="text-[10px] uppercase text-destructive underline"
+                          >
+                            Annuler
+                          </button>
                         )}
                       </>
                     )}

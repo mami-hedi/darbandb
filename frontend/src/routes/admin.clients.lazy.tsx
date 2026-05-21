@@ -11,6 +11,9 @@ import {
   UserCheck
 } from 'lucide-react';
 
+// Centralisation de l'URL de l'API (S'adapte automatiquement entre dev et prod)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 interface Client {
   email: string;
   firstName: string;
@@ -34,7 +37,8 @@ const ClientsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('http://localhost:5000/api/reservations/clients-list');
+      // Utilisation de la variable d'environnement
+      const response = await fetch(`${API_BASE}/reservations/clients-list`);
       
       if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
       
@@ -187,7 +191,7 @@ const ClientsPage = () => {
   );
 };
 
-// Export unique propre de la route Lazy
+// Export unique de la route Lazy (Conflit de doublon nettoyé ici)
 export const Route = createLazyFileRoute('/admin/clients')({
   component: ClientsPage,
 });

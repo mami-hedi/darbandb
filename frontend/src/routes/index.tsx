@@ -6,10 +6,9 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
 // Assets
-import heroImg1 from '../assets/hero-1.JPG';
-import heroImg2 from '../assets/hero-2.JPG';
-import heroImg3 from '../assets/hero-3.JPG';
-import heroImg from "@/assets/hero.jpg";
+import heroImg1 from "../assets/hero-1.JPG";
+import heroImg2 from "../assets/hero-2.JPG";
+import heroImg3 from "../assets/hero-3.JPG";
 import g1 from "@/assets/g1.jpeg";
 import g2 from "@/assets/g2.jpeg";
 import g4 from "@/assets/g4.jpeg";
@@ -19,19 +18,28 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+// Type strict pour les identifiants de nos routes statiques
+type SuiteId = "suite-azur" | "suite-olive" | "suite-jasmin" | "suite-ambre";
+
+interface SuiteItem {
+  id: SuiteId;
+  t: string;
+  d: string;
+}
+
 function Home() {
   const { t } = useLang();
   const [isWineOpen, setIsWineOpen] = useState(false);
 
-  // Images mapping pour les suites (correspondance avec les ID du dictionnaire)
-  const suiteImages: Record<string, string> = {
+  // Mapping des images avec les identifiants statiques
+  const suiteImages: Record<SuiteId, string> = {
     "suite-azur": g1,
     "suite-olive": g2,
     "suite-jasmin": g4,
     "suite-ambre": g6,
   };
 
-  // Bloquer le scroll quand la modal est ouverte
+  // Bloquer le scroll quand la modal de la carte des vins est ouverte
   useEffect(() => {
     if (isWineOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "unset";
@@ -41,58 +49,55 @@ function Home() {
     <SiteLayout transparentHeader>
       {/* --- HERO --- */}
       <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-foreground">
-  {/* Triptyque de 3 images en arrière-plan */}
-  <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
-    {[heroImg1, heroImg2, heroImg3].map((img, index) => (
-      <div key={index} className="relative h-full w-full overflow-hidden">
-        <motion.img
-          src={img}
-          alt={`Villa B&B Hammamet - Vue ${index + 1}`}
-          className="h-full w-full object-cover"
-          width={640}
-          height={1280}
-          initial={{ scale: 1.15, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ 
-            duration: 1.6, 
-            delay: index * 0.2, // Effet cascade élégant d'une image à l'autre
-            ease: [0.25, 1, 0.5, 1] 
-          }}
-        />
-      </div>
-    ))}
-  </div>
+        <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
+          {[heroImg1, heroImg2, heroImg3].map((img, index) => (
+            <div key={index} className="relative h-full w-full overflow-hidden">
+              <motion.img
+                src={img}
+                alt={`Villa B&B Hammamet - Vue ${index + 1}`}
+                className="h-full w-full object-cover"
+                width={640}
+                height={1280}
+                initial={{ scale: 1.15, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  duration: 1.6,
+                  delay: index * 0.2,
+                  ease: [0.25, 1, 0.5, 1],
+                }}
+              />
+            </div>
+          ))}
+        </div>
 
-  {/* Overlay sombre pour garantir la lisibilité du texte blanc */}
-  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/70" />
 
-  {/* Contenu textuel */}
-  <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
-      className="max-w-3xl"
-    >
-      <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
-      <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
-      <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
-      
-      <div className="mt-10 flex flex-wrap gap-4">
-        <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-foreground px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
-          {t.hero.cta} <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link to="/gallery" className="inline-flex items-center gap-3 border border-white/60 text-white px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white hover:text-foreground transition">
-          {t.hero.cta2}
-        </Link>
-      </div>
-    </motion.div>
+        <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
+            className="max-w-3xl"
+          >
+            <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
+            <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
+            <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
 
-    <div className="hidden md:flex absolute right-10 bottom-12 items-center gap-2 text-xs tracking-[0.25em] uppercase">
-      <MapPin className="h-3.5 w-3.5" /> Hammamet · Tunisie
-    </div>
-  </div>
-</section>
+            <div className="mt-10 flex flex-wrap gap-4">
+              <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-foreground px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
+                {t.hero.cta} <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/gallery" className="inline-flex items-center gap-3 border border-white/60 text-white px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white hover:text-foreground transition">
+                {t.hero.cta2}
+              </Link>
+            </div>
+          </motion.div>
+
+          <div className="hidden md:flex absolute right-10 bottom-12 items-center gap-2 text-xs tracking-[0.25em] uppercase">
+            <MapPin className="h-3.5 w-3.5" /> Hammamet · Tunisie
+          </div>
+        </div>
+      </section>
 
       {/* --- INTRO & FEATURES --- */}
       <section className="container-luxe py-28 md:py-40">
@@ -125,17 +130,18 @@ function Home() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {t.suites.items.map((suite: any) => (
-            <Link 
-              key={suite.id} 
-              to={`/suites/${suite.id}`} 
+          {t.suites.items.map((suite: SuiteItem) => (
+            <Link
+              key={suite.id}
+              // Redirection directe vers la route statique (ex: /suites/suite-azur)
+              to={`/suites/${suite.id}`}
               className="group block overflow-hidden"
             >
               <div className="aspect-[3/4] overflow-hidden mb-6 bg-accent">
-                <img 
-                  src={suiteImages[suite.id]} 
-                  alt={suite.t} 
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                <img
+                  src={suiteImages[suite.id]}
+                  alt={suite.t}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               </div>
               <div className="flex justify-between items-end border-b border-border pb-4">
@@ -150,7 +156,7 @@ function Home() {
         </div>
       </section>
 
-      {/* --- WINE & SELECTION (Popup) --- */}
+      {/* --- WINE & SELECTION --- */}
       <section className="bg-foreground text-background py-28 md:py-40 overflow-hidden">
         <div className="container-luxe grid md:grid-cols-2 gap-16 items-center">
           <div className="relative group cursor-pointer" onClick={() => setIsWineOpen(true)}>
@@ -167,7 +173,7 @@ function Home() {
             <div className="text-[0.7rem] tracking-[0.35em] uppercase text-background/50 mb-6">— {t.wine.eyebrow}</div>
             <h2 className="text-4xl md:text-5xl font-display mb-6">{t.wine.title}</h2>
             <p className="text-background/70 mb-10 leading-relaxed max-w-md">{t.wine.sub}</p>
-            <button 
+            <button
               onClick={() => setIsWineOpen(true)}
               className="inline-flex items-center gap-3 border border-background/30 px-8 py-4 text-[10px] tracking-[0.3em] uppercase hover:bg-background hover:text-foreground transition-all"
             >
@@ -180,18 +186,18 @@ function Home() {
       {/* --- WINE MODAL --- */}
       <AnimatePresence>
         {isWineOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-md"
           >
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
               className="bg-background text-foreground w-full max-w-3xl max-h-[90svh] overflow-y-auto p-8 md:p-16 relative"
             >
               <button onClick={() => setIsWineOpen(false)} className="absolute top-8 right-8 p-2 hover:bg-accent rounded-full transition-colors">
                 <X className="h-6 w-6" />
               </button>
-              
+
               <div className="text-center mb-16">
                 <GlassWater className="h-8 w-8 mx-auto mb-6 text-muted-foreground" />
                 <h2 className="text-4xl font-display mb-2">{t.wine.modalTitle}</h2>
@@ -229,7 +235,7 @@ function Home() {
                 <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
                   {t.wine.disclaimer}
                 </p>
-                <button 
+                <button
                   onClick={() => setIsWineOpen(false)}
                   className="mt-8 text-[10px] uppercase tracking-widest underline underline-offset-4"
                 >
