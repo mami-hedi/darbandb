@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLang } from '@/i18n/LanguageContext';
 import { useNavigate } from '@tanstack/react-router'; // Import pour la redirection
@@ -35,7 +33,8 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
   const [priceInfo, setPriceInfo] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // Correction ici : Utilisation de import.meta.env.VITE_API_URL pour Vite
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   const fetchCalendar = useCallback(async () => {
     setLoading(true);
@@ -129,6 +128,8 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
         </div>
       )}
 
+      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
+
       {/* Rendu du prix et BOUTON DE REDIRECTION */}
       {!isAdmin && priceInfo && checkIn && checkOut && (
         <div className="mb-6 p-4 bg-stone-50 border border-stone-200 animate-in fade-in zoom-in duration-300">
@@ -152,7 +153,8 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
         <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))} className="p-2 hover:bg-stone-100 rounded-full"><ChevronRight size={20}/></button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1 relative">
+        {loading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-20">Chargement...</div>}
         {weekDays.map(d => <div key={d} className="h-10 flex items-center justify-center text-[10px] font-bold text-stone-400 uppercase">{d}</div>)}
         {Array(firstDay).fill(null).map((_, i) => <div key={i} className="h-12 bg-stone-50/30" />)}
         {calendar.map((day) => (
