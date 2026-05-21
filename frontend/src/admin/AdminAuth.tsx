@@ -1,34 +1,51 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type AuthCtx = { isAuthed: boolean; login: (email: string, pwd: string) => boolean; logout: () => void; email: string | null };
-const Ctx = createContext<AuthCtx | null>(null);
+// 1. Définition du type de contexte
+interface AuthContextType {
+  isAuthenticated: boolean;
+  login: () => void;
+  logout: () => void;
+  isLoading: boolean;
+}
 
-const KEY = "bnb-admin-auth";
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [email, setEmail] = useState<string | null>(null);
+// 2. Le Provider qui enveloppe ton application
+export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+  // On force directement à TRUE
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  // On force directement à FALSE (pas de chargement)
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setEmail(localStorage.getItem(KEY));
+    // On s'assure que même après le montage, l'état reste connecté et dispo
+    setIsAuthenticated(true);
+    setIsLoading(false);
   }, []);
 
-  const login = (e: string, p: string) => {
-    // Mock auth: accept any non-empty email + pwd >= 4 chars
-    if (e && p.length >= 4) {
-      localStorage.setItem(KEY, e);
-      setEmail(e);
-      return true;
-    }
-    return false;
+  const login = () => {
+    // Optionnel en mode "toujours connecté", mais on le garde pour éviter les erreurs
+    setIsAuthenticated(true);
   };
-  const logout = () => { localStorage.removeItem(KEY); setEmail(null); };
 
-  return <Ctx.Provider value={{ isAuthed: !!email, login, logout, email }}>{children}</Ctx.Provider>;
+  const logout = () => {
+    // Si vous cliquez sur déconnexion, on simule juste une action vide 
+    // ou vous pouvez le laisser pour pouvoir tester le logout
+    console.log("Logout cliqué (désactivé temporairement)");
+  };
+
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export function useAdminAuth() {
-  const c = useContext(Ctx);
-  if (!c) throw new Error("useAdminAuth must be inside AdminAuthProvider");
-  return c;
-}
+// 3. Hook personnalisé
+export const useAdminAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAdminAuth doit être utilisé à l\'intérieur d\'un AdminAuthProvider');
+  }
+  return context;
+};

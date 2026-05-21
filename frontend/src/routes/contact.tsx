@@ -45,6 +45,9 @@ function Contact() {
 
   const AIRBNB_URL = "https://www.airbnb.com/h/votre-villa-hammamet";
 
+  // Coordonnées pour Dar d'Art
+  const mapUrl = `https://maps.google.com/maps?q=36.4101,10.5593&z=16&output=embed`;
+
   // Formater la date depuis le calendrier au format input HTML
   function formatDateForInput(dateStr: string): string {
     const date = new Date(dateStr);
@@ -283,7 +286,7 @@ function Contact() {
 
           {/* Infos de contact */}
           <div>
-            <div className="eyebrow mb-3">B&amp;B Hammamet</div>
+            <div className="eyebrow mb-3">Dar B&amp;B</div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Une équipe à votre écoute, 7j/7. Réponse garantie sous 24 heures.
             </p>
@@ -301,16 +304,26 @@ function Contact() {
             </li>
           </ul>
 
-          <div className="aspect-[4/3] overflow-hidden border border-border grayscale hover:grayscale-0 transition-all duration-700">
-            <iframe
-              title="Carte"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=10.59%2C36.39%2C10.65%2C36.42&layer=mapnik"
-              className="h-full w-full"
-              loading="lazy"
-            />
-          </div>
+          
+          {/* CARTE GOOGLE MAPS CORRIGÉE */}
+          
         </aside>
       </section>
+      <section className="w-full h-[500px] overflow-hidden border-y border-stone-200 group relative">
+  <iframe
+    title="Carte Dar d'Art"
+    src={mapUrl}
+    className="h-full w-full grayscale contrast-[1.1] opacity-80 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
+    style={{ border: 0 }}
+    loading="lazy"
+    allowFullScreen
+  />
+  {/* Optionnel : Overlay avec l'adresse en flottant */}
+  <div className="absolute bottom-10 left-10 bg-white p-6 shadow-xl hidden md:block">
+    <p className="text-[10px] tracking-widest uppercase font-bold">Localisation</p>
+    <p className="text-sm text-stone-500">Résidence Dar d'Art, Hammamet</p>
+  </div>
+</section>
     </SiteLayout>
   );
 }

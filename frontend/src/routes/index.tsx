@@ -6,11 +6,14 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
 // Assets
+import heroImg1 from '../assets/hero-1.jpg';
+import heroImg2 from '../assets/hero-2.jpg';
+import heroImg3 from '../assets/hero-3.jpg';
 import heroImg from "@/assets/hero.jpg";
-import g1 from "@/assets/g1.jpg";
-import g2 from "@/assets/g2.jpg";
-import g4 from "@/assets/g4.jpg";
-import g6 from "@/assets/g6.jpg";
+import g1 from "@/assets/g1.jpeg";
+import g2 from "@/assets/g2.jpeg";
+import g4 from "@/assets/g4.jpeg";
+import g6 from "@/assets/g6.jpeg";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -37,33 +40,59 @@ function Home() {
   return (
     <SiteLayout transparentHeader>
       {/* --- HERO --- */}
-      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden">
-        <img src={heroImg} alt="Villa B&B Hammamet" className="absolute inset-0 h-full w-full object-cover" width={1920} height={1280} />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
-        <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-3xl"
-          >
-            <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
-            <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
-            <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-foreground px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
-                {t.hero.cta} <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/gallery" className="inline-flex items-center gap-3 border border-white/60 text-white px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white hover:text-foreground transition">
-                {t.hero.cta2}
-              </Link>
-            </div>
-          </motion.div>
-          <div className="hidden md:flex absolute right-10 bottom-12 items-center gap-2 text-xs tracking-[0.25em] uppercase">
-            <MapPin className="h-3.5 w-3.5" /> Hammamet · Tunisie
-          </div>
-        </div>
-      </section>
+      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-foreground">
+  {/* Triptyque de 3 images en arrière-plan */}
+  <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
+    {[heroImg1, heroImg2, heroImg3].map((img, index) => (
+      <div key={index} className="relative h-full w-full overflow-hidden">
+        <motion.img
+          src={img}
+          alt={`Villa B&B Hammamet - Vue ${index + 1}`}
+          className="h-full w-full object-cover"
+          width={640}
+          height={1280}
+          initial={{ scale: 1.15, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ 
+            duration: 1.6, 
+            delay: index * 0.2, // Effet cascade élégant d'une image à l'autre
+            ease: [0.25, 1, 0.5, 1] 
+          }}
+        />
+      </div>
+    ))}
+  </div>
+
+  {/* Overlay sombre pour garantir la lisibilité du texte blanc */}
+  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/70" />
+
+  {/* Contenu textuel */}
+  <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
+      className="max-w-3xl"
+    >
+      <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
+      <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
+      <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
+      
+      <div className="mt-10 flex flex-wrap gap-4">
+        <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-foreground px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
+          {t.hero.cta} <ArrowRight className="h-4 w-4" />
+        </Link>
+        <Link to="/gallery" className="inline-flex items-center gap-3 border border-white/60 text-white px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white hover:text-foreground transition">
+          {t.hero.cta2}
+        </Link>
+      </div>
+    </motion.div>
+
+    <div className="hidden md:flex absolute right-10 bottom-12 items-center gap-2 text-xs tracking-[0.25em] uppercase">
+      <MapPin className="h-3.5 w-3.5" /> Hammamet · Tunisie
+    </div>
+  </div>
+</section>
 
       {/* --- INTRO & FEATURES --- */}
       <section className="container-luxe py-28 md:py-40">

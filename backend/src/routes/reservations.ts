@@ -4,6 +4,7 @@ import { ReservationController } from '../controllers/reservationController';
 const router = Router();
 const controller = new ReservationController();
 
+
 /**
  * URL de base: /api/reservations
  */
@@ -31,5 +32,9 @@ router.put('/:id', controller.updateReservation);
 
 // Modifier uniquement le STATUT (Confirmer/Annuler)
 router.put('/:id/status', controller.updateReservationStatus);
+
+// Ajoutez ces deux lignes
+router.get('/admin/stats', controller.getDashboardStats);
+
 
 export default router;

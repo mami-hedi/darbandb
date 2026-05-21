@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
-import { Op, fn, col } from 'sequelize';
+import { Op, fn, col, Sequelize } from 'sequelize'; // Correction : Import de Sequelize ici
 
 export class ReservationController {
   private emailService: EmailService;
@@ -14,11 +14,12 @@ export class ReservationController {
     this.updateReservation = this.updateReservation.bind(this);
     this.updateReservationStatus = this.updateReservationStatus.bind(this);
     this.checkAvailability = this.checkAvailability.bind(this);
-    this.getClients = this.getClients.bind(this); // Nouveau bind
+    this.getClients = this.getClients.bind(this);
+    this.getDashboardStats = this.getDashboardStats.bind(this); // Ajout du bind manquant
   }
 
   /**
-   * POST - Créer une nouvelle réservation (Côté Client)
+   * POST - Créer une nouvelle réservation
    */
   async createReservation(req: Request, res: Response) {
     try {
@@ -85,43 +86,32 @@ export class ReservationController {
     }
   }
 
-  /**
-   * GET - Lister les réservations (Admin)
-   */
   async getReservations(req: Request, res: Response) {
     try {
       const { status, month } = req.query;
       const where: any = {};
-
       if (status && status !== 'all') where.status = status;
-
       if (month) {
         const [year, m] = (month as string).split('-');
         where.checkInDate = {
           [Op.between]: [new Date(+year, +m - 1, 1), new Date(+year, +m, 0)],
         };
       }
-
       const reservations = await ReservationModel.findAll({
         where,
         order: [['checkInDate', 'DESC']],
       });
-
       return res.json({ success: true, data: reservations });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
- /**
-   * GET - Liste des clients uniques avec stats (Admin)
-   */
   async getClients(req: Request, res: Response) {
     try {
       const clients = await ReservationModel.findAll({
         attributes: [
           'email',
-          // Utilisation de MAX ou MIN pour satisfaire MySQL sans changer le GROUP BY principal
           [fn('MAX', col('firstName')), 'firstName'],
           [fn('MAX', col('lastName')), 'lastName'],
           [fn('MAX', col('phone')), 'phone'],
@@ -132,66 +122,49 @@ export class ReservationController {
         order: [[fn('SUM', col('totalPrice')), 'DESC']],
         raw: true 
       });
-
       return res.json({ success: true, data: clients });
     } catch (error: any) {
-      // Regardez bien ce log dans votre terminal VS Code / Node
-      console.error("ERREUR SQL CRITIQUE :", error.message);
+      console.error("ERREUR SQL CLIENTS :", error.message);
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  /**
-   * PUT - Mise à jour d'une réservation (Admin)
-   */
   async updateReservation(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const updateData = req.body;
-
       const reservation = await ReservationModel.findByPk(id);
-      if (!reservation) {
-        return res.status(404).json({ success: false, error: 'Réservation non trouvée' });
-      }
-
+      if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
+      
       const oldStatus = reservation.status;
-
       if (updateData.checkInDate || updateData.checkOutDate) {
-        const checkIn = updateData.checkInDate || reservation.checkInDate;
-        const checkOut = updateData.checkOutDate || reservation.checkOutDate;
-        const nights = this.calculateNights(checkIn as string, checkOut as string);
-        
+        const nights = this.calculateNights(
+          updateData.checkInDate || reservation.checkInDate,
+          updateData.checkOutDate || reservation.checkOutDate
+        );
         if (nights > 0) {
-          const pricePerNight = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
-          updateData.totalPrice = nights * pricePerNight;
+          const p = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+          updateData.totalPrice = nights * p;
         }
       }
-
       await reservation.update(updateData);
-
       if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
         await this.emailService.sendCancellationEmail(reservation);
       }
-
       return res.json({ success: true, data: reservation });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  /**
-   * PUT - Mise à jour du statut uniquement (Admin)
-   */
   async updateReservationStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const { status } = req.body;
       const reservation = await ReservationModel.findByPk(id);
       if (!reservation) return res.status(404).json({ success: false });
-
       const oldStatus = reservation.status;
       await reservation.update({ status });
-
       if (oldStatus !== 'cancelled' && status === 'cancelled') {
         await this.emailService.sendCancellationEmail(reservation);
       }
@@ -201,9 +174,6 @@ export class ReservationController {
     }
   }
 
-  /**
-   * GET - Disponibilité
-   */
   async checkAvailability(req: Request, res: Response) {
     try {
       const { checkIn, checkOut } = req.query;
@@ -218,6 +188,77 @@ export class ReservationController {
       });
       return res.json({ available: !conflict });
     } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * GET - Statistiques globales pour le Dashboard (Admin)
+   */
+  async getDashboardStats(req: Request, res: Response) {
+    try {
+      // 1. Calcul des revenus et nuits par mois
+      const monthlyData = await ReservationModel.findAll({
+        attributes: [
+          [fn('MONTH', col('checkInDate')), 'month'],
+          [fn('SUM', col('totalPrice')), 'revenue'],
+          // Utilisation d'un literal SQL pour calculer la différence de jours
+          [Sequelize.literal('SUM(DATEDIFF(checkOutDate, checkInDate))'), 'nights']
+        ],
+        where: { status: 'confirmed' },
+        group: [fn('MONTH', col('checkInDate'))],
+        order: [[fn('MONTH', col('checkInDate')), 'ASC']],
+        raw: true
+      });
+
+      // 2. Répartition par source
+      const sourcesData = await ReservationModel.findAll({
+        attributes: [
+          'source',
+          [fn('COUNT', col('id')), 'count']
+        ],
+        group: ['source'],
+        raw: true
+      });
+
+      // 3. Totaux
+      const totalRevenue = await ReservationModel.sum('totalPrice', { where: { status: 'confirmed' } });
+      const totalClients = await ReservationModel.count({ distinct: true, col: 'email' });
+      const upcoming = await ReservationModel.count({ 
+        where: { 
+          status: 'confirmed', 
+          checkInDate: { [Op.gte]: new Date() } 
+        } 
+      });
+
+      // 4. Formatage
+      const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+      const formattedRevenue = monthlyData.map((d: any) => ({
+        m: monthNames[d.month - 1] || 'Inconnu',
+        revenue: parseFloat(d.revenue) || 0,
+        nights: parseInt(d.nights) || 0
+      }));
+
+      const formattedSources = sourcesData.map((s: any) => ({
+        name: s.source.charAt(0).toUpperCase() + s.source.slice(1),
+        value: parseInt(s.count) || 0
+      }));
+
+      return res.json({
+        success: true,
+        data: {
+          revenue: formattedRevenue.length > 0 ? formattedRevenue : [{ m: 'Aucun', revenue: 0, nights: 0 }],
+          sources: formattedSources.length > 0 ? formattedSources : [{ name: 'Aucune', value: 0 }],
+          totals: {
+            revenue: totalRevenue || 0,
+            clients: totalClients || 0,
+            upcoming: upcoming || 0,
+            nights: formattedRevenue.reduce((acc, curr) => acc + curr.nights, 0)
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error("Erreur DashboardStats:", error);
       return res.status(500).json({ success: false, error: error.message });
     }
   }

@@ -1,22 +1,15 @@
-// ============================================
-// Composant: Calendrier Disponibilité
-// @/components/AvailabilityCalendar.tsx
-// ============================================
-
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/i18n/LanguageContext';
+import { useNavigate } from '@tanstack/react-router'; // Import pour la redirection
 
 interface CalendarDay {
   date: string;
   day: number;
-  month: number;
-  year: number;
   available: boolean;
-  dayOfWeek: number;
-  dayName: string;
 }
 
 interface PriceData {
@@ -25,7 +18,15 @@ interface PriceData {
   totalPrice: number;
 }
 
-export function AvailabilityCalendar() {
+interface AvailabilityCalendarProps {
+  isAdmin?: boolean;
+  onUpdate?: () => void;
+}
+
+export function AvailabilityCalendar({ isAdmin = false, onUpdate }: AvailabilityCalendarProps) {
+  const { lang } = useLang();
+  const navigate = useNavigate(); // Hook de navigation
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendar, setCalendar] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,366 +35,142 @@ export function AvailabilityCalendar() {
   const [priceInfo, setPriceInfo] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-  // Charger le calendrier au montage et quand le mois change
-  useEffect(() => {
-    fetchCalendar();
-  }, [currentDate]);
-
-  // ============================================
-  // RÉCUPÉRER LE CALENDRIER
-  // ============================================
-  const fetchCalendar = async () => {
+  const fetchCalendar = useCallback(async () => {
     setLoading(true);
-    setError(null);
-
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
-
-      const response = await fetch(
-        `${API_BASE}/availability/calendar?year=${year}&month=${month}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement du calendrier');
-      }
-
+      const response = await fetch(`${API_BASE}/availability/calendar?year=${year}&month=${month}`);
       const data = await response.json();
       setCalendar(data.data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      setCalendar([]);
+      setError(lang === 'fr' ? 'Erreur de connexion' : 'Connection error');
     } finally {
       setLoading(false);
     }
+  }, [currentDate, API_BASE, lang]);
+
+  useEffect(() => {
+    fetchCalendar();
+  }, [fetchCalendar]);
+
+  // Redirection vers la page Contact avec les dates
+  const handleRedirectToContact = () => {
+    if (!checkIn || !checkOut) return;
+    
+    navigate({
+      to: '/contact',
+      search: {
+        checkIn: checkIn,
+        checkOut: checkOut,
+      },
+    });
   };
 
-  // ============================================
-  // CALCULER LE PRIX
-  // ============================================
-  const calculatePrice = async (inDate: string, outDate: string) => {
+  const toggleAvailability = async (day: CalendarDay) => {
+    const oldCalendar = [...calendar];
+    setCalendar(calendar.map(d => d.date === day.date ? { ...d, available: !d.available } : d));
+
     try {
-      const response = await fetch(
-        `${API_BASE}/availability/price?checkIn=${inDate}&checkOut=${outDate}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Erreur lors du calcul du prix');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setPriceInfo(data.data);
-      }
+      const response = await fetch(`${API_BASE}/availability/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: day.date, available: !day.available })
+      });
+      if (!response.ok) throw new Error();
+      if (onUpdate) onUpdate();
     } catch (err) {
-      console.error('Erreur calcul prix:', err);
-      setPriceInfo(null);
+      setCalendar(oldCalendar);
+      setError("Erreur lors de la mise à jour");
     }
   };
 
-  // ============================================
-  // GESTION DES CLICS SUR LES DATES
-  // ============================================
-  const handleDateClick = (day: CalendarDay) => {
-    // Ne pas pouvoir sélectionner une date non disponible
-    if (!day.available) {
-      setError('Cette date n\'est pas disponible');
-      return;
-    }
+  const handleDateClick = async (day: CalendarDay) => {
+    if (isAdmin) return toggleAvailability(day);
+    if (!day.available) return;
 
-    setError(null);
-
-    // Si c'est la première sélection (check-in)
-    if (!checkIn) {
+    if (!checkIn || (checkIn && checkOut)) {
       setCheckIn(day.date);
       setCheckOut(null);
       setPriceInfo(null);
-    }
-    // Si check-in est sélectionné et on clique sur une date après
-    else if (checkOut === null) {
-      const checkInDate = new Date(checkIn);
-      const clickedDate = new Date(day.date);
-
-      // Vérifier que la date cliquée est après check-in
-      if (clickedDate <= checkInDate) {
+    } else {
+      if (new Date(day.date) <= new Date(checkIn)) {
         setCheckIn(day.date);
         return;
       }
-
-      // Vérifier si toutes les dates entre checkIn et checkOut sont disponibles
-      const allAvailable = isRangeAvailable(checkIn, day.date);
-      if (!allAvailable) {
-        setError('La plage de dates sélectionnée contient des dates non disponibles');
-        return;
-      }
-
       setCheckOut(day.date);
-      calculatePrice(checkIn, day.date);
-    } else {
-      // Réinitialiser
-      setCheckIn(day.date);
-      setCheckOut(null);
-      setPriceInfo(null);
+      
+      try {
+        const res = await fetch(`${API_BASE}/availability/price?checkIn=${checkIn}&checkOut=${day.date}`);
+        const data = await res.json();
+        if (data.success) setPriceInfo(data.data);
+      } catch (err) {
+        console.error("Erreur prix:", err);
+      }
     }
   };
 
-  // ============================================
-  // VÉRIFIER SI LA PLAGE EST DISPONIBLE
-  // ============================================
-  const isRangeAvailable = (start: string, end: string): boolean => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-
-    return calendar.every((day) => {
-      const dayDate = new Date(day.date);
-      if (dayDate >= startDate && dayDate < endDate) {
-        return day.available;
-      }
-      return true;
-    });
+  const isInRange = (dateStr: string) => {
+    if (!checkIn || !checkOut) return false;
+    return dateStr > checkIn && dateStr < checkOut;
   };
 
-  // ============================================
-  // VÉRIFIER SI UNE DATE EST DANS LA PLAGE
-  // ============================================
-  const isInRange = (dateStr: string): boolean => {
-    if (!checkIn) return false;
-    if (!checkOut) return false;
-
-    const date = new Date(dateStr);
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-
-    return date >= start && date <= end;
-  };
-
-  // ============================================
-  // NAVIGATION MOIS
-  // ============================================
-  const previousMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1)
-    );
-  };
-
-  const nextMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
-    );
-  };
-
-  // ============================================
-  // FORMATER LA DATE
-  // ============================================
-  const formatDate = (dateStr: string): string => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  // ============================================
-  // RENDU
-  // ============================================
-  const monthName = currentDate.toLocaleDateString('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const weekDays = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const monthName = currentDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' });
+  const weekDays = lang === 'fr' ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
-  const emptyDays = Array(firstDay).fill(null);
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-background border border-border">
-      {/* TITRE */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-display mb-2">Vérifier la disponibilité</h2>
-        <p className="text-sm text-muted-foreground">
-          Sélectionnez une date d'arrivée, puis une date de départ
-        </p>
-      </div>
-
-      {/* AFFICHAGE DES DATES SÉLECTIONNÉES */}
-      {(checkIn || checkOut) && (
-        <div className="mb-6 p-4 bg-accent/20 border border-accent/40">
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Arrivée</p>
-              <p className="text-sm font-semibold">
-                {checkIn ? formatDate(checkIn) : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Départ</p>
-              <p className="text-sm font-semibold">
-                {checkOut ? formatDate(checkOut) : 'Sélectionnez une date'}
-              </p>
-            </div>
-          </div>
-
-          {/* PRIX */}
-          {priceInfo && (
-            <div className="pt-4 border-t border-accent/40">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Nuits</p>
-                  <p className="font-semibold">{priceInfo.nights}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Par nuit</p>
-                  <p className="font-semibold">{priceInfo.pricePerNight}€</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="text-lg font-bold">{priceInfo.totalPrice}€</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  // Rediriger vers le formulaire de réservation
-                  window.location.href = `/contact?checkIn=${checkIn}&checkOut=${checkOut}`;
-                }}
-                className="w-full mt-4 bg-foreground text-background py-2 text-sm font-semibold hover:opacity-90 transition"
-              >
-                Réserver Maintenant
-              </button>
-            </div>
-          )}
+    <div className={cn("w-full bg-white", !isAdmin && "max-w-2xl mx-auto p-6 border border-border shadow-sm")}>
+      {!isAdmin && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-display">{lang === 'fr' ? 'Vérifier la disponibilité' : 'Check Availability'}</h2>
         </div>
       )}
 
-      {/* MESSAGE D'ERREUR */}
-      {error && (
-        <div className="mb-6 p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm">
-          {error}
+      {/* Rendu du prix et BOUTON DE REDIRECTION */}
+      {!isAdmin && priceInfo && checkIn && checkOut && (
+        <div className="mb-6 p-4 bg-stone-50 border border-stone-200 animate-in fade-in zoom-in duration-300">
+           <div className="flex justify-between items-center text-sm mb-4 font-bold">
+             <span>{priceInfo.nights} {lang === 'fr' ? 'Nuits' : 'Nights'}</span>
+             <span className="text-xl">{priceInfo.totalPrice}€</span>
+           </div>
+           <button 
+            onClick={handleRedirectToContact}
+            className="w-full bg-stone-950 text-white py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-stone-800 transition-colors"
+           >
+             {lang === 'fr' ? 'Réserver' : 'Book Now'}
+           </button>
         </div>
       )}
 
-      {/* CALENDRIER */}
-      <div className="space-y-4">
-        {/* EN-TÊTE AVEC NAVIGATION */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={previousMonth}
-            className="p-2 hover:bg-secondary transition"
-            aria-label="Mois précédent"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          <h3 className="text-lg font-semibold capitalize text-center min-w-[200px]">
-            {monthName}
-          </h3>
-
-          <button
-            onClick={nextMonth}
-            className="p-2 hover:bg-secondary transition"
-            aria-label="Mois suivant"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Chargement...</p>
-          </div>
-        ) : (
-          <>
-            {/* JOURS DE LA SEMAINE */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {weekDays.map((day) => (
-                <div
-                  key={day}
-                  className="h-10 flex items-center justify-center text-xs font-semibold text-muted-foreground"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* JOURS DU MOIS */}
-            <div className="grid grid-cols-7 gap-1">
-              {/* Jours vides au début du mois */}
-              {emptyDays.map((_, i) => (
-                <div key={`empty-${i}`} className="h-10 bg-secondary/20" />
-              ))}
-
-              {/* Jours du mois */}
-              {calendar.map((day) => {
-                const isSelected =
-                  day.date === checkIn || day.date === checkOut;
-                const isInSelectRange = isInRange(day.date);
-                const isToday =
-                  day.date === new Date().toISOString().split('T')[0];
-
-                return (
-                  <button
-                    key={day.date}
-                    onClick={() => handleDateClick(day)}
-                    disabled={!day.available}
-                    className={cn(
-                      'h-10 flex items-center justify-center text-xs font-semibold rounded transition',
-                      // Disponible - vert clair par défaut
-                      day.available && !isSelected && !isInSelectRange
-                        ? 'bg-green-100 hover:bg-green-200 text-foreground cursor-pointer'
-                        : '',
-                      // Non disponible - rouge
-                      !day.available
-                        ? 'bg-destructive/30 text-destructive cursor-not-allowed opacity-60'
-                        : '',
-                      // Sélectionné (checkIn ou checkOut) - noir
-                      isSelected
-                        ? 'bg-foreground text-background font-bold'
-                        : '',
-                      // Dans la plage - bleu clair
-                      isInSelectRange && !isSelected
-                        ? 'bg-blue-200 text-foreground'
-                        : '',
-                      // Aujourd'hui - bordure
-                      isToday && day.available
-                        ? 'border-2 border-foreground'
-                        : '',
-                    )}
-                    title={
-                      !day.available ? 'Non disponible' : ''
-                    }
-                  >
-                    {day.day}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+      {/* Navigation Calendrier */}
+      <div className="flex items-center justify-between mb-8">
+        <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft size={20}/></button>
+        <h3 className="text-sm font-bold uppercase tracking-widest">{monthName}</h3>
+        <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))} className="p-2 hover:bg-stone-100 rounded-full"><ChevronRight size={20}/></button>
       </div>
 
-      {/* LÉGENDE */}
-      <div className="mt-8 pt-6 border-t border-border">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-green-100 rounded border border-green-200" />
-            <span>Disponible</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-destructive/30 rounded border border-destructive/50" />
-            <span>Non disponible</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-foreground rounded" />
-            <span>Sélectionné</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-blue-200 rounded border border-blue-300" />
-            <span>Sélectionné</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-7 gap-1">
+        {weekDays.map(d => <div key={d} className="h-10 flex items-center justify-center text-[10px] font-bold text-stone-400 uppercase">{d}</div>)}
+        {Array(firstDay).fill(null).map((_, i) => <div key={i} className="h-12 bg-stone-50/30" />)}
+        {calendar.map((day) => (
+          <button
+            key={day.date}
+            onClick={() => handleDateClick(day)}
+            className={cn(
+              'h-12 flex flex-col items-center justify-center text-xs font-medium rounded-sm transition-all relative',
+              day.available ? 'bg-white border border-stone-100 hover:border-stone-900' : 'bg-stone-100 text-stone-300',
+              (day.date === checkIn || day.date === checkOut) && 'bg-stone-950 text-white z-10',
+              isInRange(day.date) && 'bg-stone-100',
+              isAdmin && !day.available && 'bg-red-50 text-red-400 border-red-100'
+            )}
+          >
+            {day.day}
+            {!day.available && <span className="absolute w-4 h-[1px] bg-current rotate-45" />}
+          </button>
+        ))}
       </div>
     </div>
   );

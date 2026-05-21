@@ -1,78 +1,56 @@
 import { Request, Response } from 'express';
-import { BlogPost } from '../models/BlogPost';
+import { BlogPost } from '../models/blogModel';
 
-export class BlogController {
-  
-  // GET - Articles publics
-  async getPublishedPosts(req: Request, res: Response) {
+export const blogController = {
+  // Récupérer tous les articles (Admin + Public)
+  getPosts: async (_req: Request, res: Response) => {
     try {
-      const posts = await BlogPost.findAll({
-        where: { status: 'published' },
-        order: [['publishedAt', 'DESC']],
+      const posts = await BlogPost.findAll({ 
+        order: [['createdAt', 'DESC']] 
       });
-      res.json({ success: true, data: posts });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.json(posts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
-  }
+  },
 
-  // POST - Créer un article (Admin)
-  async createPost(req: Request, res: Response) {
+  // Création d'un article
+  createPost: async (req: Request, res: Response) => {
     try {
-      const { title, excerpt, content, image, status } = req.body;
-      const slug = title.toLowerCase().replace(/\s+/g, '-');
-
-      const post = await BlogPost.create({
-        title,
-        slug,
-        excerpt,
-        content,
-        image,
-        status,
-        author: req.user!.id,
-        publishedAt: status === 'published' ? new Date() : null,
-      });
-
-      res.status(201).json({ success: true, data: post });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      // Le body doit contenir title: {fr, en}, body: {fr, en}, cover, etc.
+      const post = await BlogPost.create(req.body);
+      res.status(201).json(post);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
-  }
+  },
 
-  // PUT - Mettre à jour (Admin)
-  async updatePost(req: Request, res: Response) {
+  // Mise à jour complète
+  updatePost: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { title, excerpt, content, image, status } = req.body;
-      const slug = title.toLowerCase().replace(/\s+/g, '-');
-
-      const post = await BlogPost.findByPk(id);
-      if (!post) return res.status(404).json({ success: false, error: 'Article non trouvé' });
-
-      await post.update({
-        title,
-        slug,
-        excerpt,
-        content,
-        image,
-        status,
-        publishedAt: status === 'published' && !post.publishedAt ? new Date() : post.publishedAt,
-      });
-
-      res.json({ success: true, data: post });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      const [updated] = await BlogPost.update(req.body, { where: { id } });
+      if (updated) {
+        const updatedPost = await BlogPost.findByPk(id);
+        return res.json(updatedPost);
+      }
+      res.status(404).json({ message: "Article non trouvé" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
-  }
+  },
 
-  // DELETE - Supprimer un article
-  async deletePost(req: Request, res: Response) {
+  // Suppression
+  deletePost: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await BlogPost.destroy({ where: { id } });
-      res.json({ success: true, message: 'Article supprimé' });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      const deleted = await BlogPost.destroy({ where: { id } });
+      if (deleted) {
+        return res.status(204).send();
+      }
+      res.status(404).json({ message: "Article non trouvé" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   }
-}
+};
