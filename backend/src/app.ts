@@ -10,7 +10,7 @@ import { initBlogPostModel } from './models/blogModel';
 import { initAdminModel, Admin } from './models/Admin'; 
 
 // Import des routes
-import availabilityRoutes from './routes/availability';
+import availabilityRoutes from './routes/Availability';
 import reservationRoutes from './routes/reservations';
 import blogRoutes from './routes/blogRoutes';
 import authRoutes from './routes/authRoutes'; 
