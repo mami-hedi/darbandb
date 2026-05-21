@@ -6,9 +6,9 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
 // Assets
-import heroImg1 from '../assets/hero-1.jpg';
-import heroImg2 from '../assets/hero-2.jpg';
-import heroImg3 from '../assets/hero-3.jpg';
+import heroImg1 from '../assets/hero-1.JPG';
+import heroImg2 from '../assets/hero-2.JPG';
+import heroImg3 from '../assets/hero-3.JPG';
 import heroImg from "@/assets/hero.jpg";
 import g1 from "@/assets/g1.jpeg";
 import g2 from "@/assets/g2.jpeg";
