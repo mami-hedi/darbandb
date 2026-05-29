@@ -11,7 +11,7 @@ export const Route = createFileRoute("/suites/suite-olive")({
     <SuiteTemplate
       suiteId="suite-olive"
       mainImage={imgMain}
-      galleryImages={[g1, g4, g6, imgMain]}
+      galleryImages={[g1, g4, imgMain]}
     />
   ),
 });

@@ -23,11 +23,13 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /* Ajout du lien vers /booking juste après le contact */
   const links = [
     { to: "/", label: t.nav.home },
     { to: "/gallery", label: t.nav.gallery },
     { to: "/blog", label: t.nav.blog },
     { to: "/contact", label: t.nav.contact },
+    { to: "/booking", label: t.nav.booking || "Booking" }, 
   ] as const;
 
   // Détermine si on est en mode "clair sur sombre" (Header transparent sur la Home)

@@ -10,18 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BookingRouteImport } from './routes/booking'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as SuitesSuiteYasminRouteImport } from './routes/suites/suite-yasmin'
 import { Route as SuitesSuiteOliveRouteImport } from './routes/suites/suite-olive'
+import { Route as SuitesSuiteJasminRouteImport } from './routes/suites/suite-jasmin'
 import { Route as SuitesSuiteAzurRouteImport } from './routes/suites/suite-azur'
 import { Route as SuitesSuiteAmbreRouteImport } from './routes/suites/suite-ambre'
 import { Route as SuitesSuiteIdRouteImport } from './routes/suites.$suiteId'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as AdminTarifsRouteImport } from './routes/admin.tarifs'
 import { Route as AdminReservationsRouteImport } from './routes/admin.reservations'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminClientsRouteImport } from './routes/admin.clients'
@@ -33,9 +36,19 @@ const GalleryRoute = GalleryRouteImport.update({
   path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingRoute = BookingRouteImport.update({
+  id: '/booking',
+  path: '/booking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -63,14 +76,14 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const SuitesSuiteYasminRoute = SuitesSuiteYasminRouteImport.update({
-  id: '/suites/suite-yasmin',
-  path: '/suites/suite-yasmin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SuitesSuiteOliveRoute = SuitesSuiteOliveRouteImport.update({
   id: '/suites/suite-olive',
   path: '/suites/suite-olive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuitesSuiteJasminRoute = SuitesSuiteJasminRouteImport.update({
+  id: '/suites/suite-jasmin',
+  path: '/suites/suite-jasmin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SuitesSuiteAzurRoute = SuitesSuiteAzurRouteImport.update({
@@ -92,6 +105,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => BlogRoute,
+} as any)
+const AdminTarifsRoute = AdminTarifsRouteImport.update({
+  id: '/tarifs',
+  path: '/tarifs',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminReservationsRoute = AdminReservationsRouteImport.update({
   id: '/reservations',
@@ -124,38 +142,44 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/availability': typeof AvailabilityRoute
   '/blog': typeof BlogRouteWithChildren
+  '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/tarifs': typeof AdminTarifsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/suites/$suiteId': typeof SuitesSuiteIdRoute
   '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
   '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-jasmin': typeof SuitesSuiteJasminRoute
   '/suites/suite-olive': typeof SuitesSuiteOliveRoute
-  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/availability': typeof AvailabilityRoute
   '/blog': typeof BlogRouteWithChildren
+  '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/tarifs': typeof AdminTarifsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/suites/$suiteId': typeof SuitesSuiteIdRoute
   '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
   '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-jasmin': typeof SuitesSuiteJasminRoute
   '/suites/suite-olive': typeof SuitesSuiteOliveRoute
-  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -164,19 +188,22 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/availability': typeof AvailabilityRoute
   '/blog': typeof BlogRouteWithChildren
+  '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/tarifs': typeof AdminTarifsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/suites/$suiteId': typeof SuitesSuiteIdRoute
   '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
   '/suites/suite-azur': typeof SuitesSuiteAzurRoute
+  '/suites/suite-jasmin': typeof SuitesSuiteJasminRoute
   '/suites/suite-olive': typeof SuitesSuiteOliveRoute
-  '/suites/suite-yasmin': typeof SuitesSuiteYasminRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -186,38 +213,44 @@ export interface FileRouteTypes {
     | '/admin'
     | '/availability'
     | '/blog'
+    | '/booking'
     | '/contact'
+    | '/faq'
     | '/gallery'
     | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
+    | '/admin/tarifs'
     | '/blog/$slug'
     | '/suites/$suiteId'
     | '/suites/suite-ambre'
     | '/suites/suite-azur'
+    | '/suites/suite-jasmin'
     | '/suites/suite-olive'
-    | '/suites/suite-yasmin'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/availability'
     | '/blog'
+    | '/booking'
     | '/contact'
+    | '/faq'
     | '/gallery'
     | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
+    | '/admin/tarifs'
     | '/blog/$slug'
     | '/suites/$suiteId'
     | '/suites/suite-ambre'
     | '/suites/suite-azur'
+    | '/suites/suite-jasmin'
     | '/suites/suite-olive'
-    | '/suites/suite-yasmin'
     | '/admin'
   id:
     | '__root__'
@@ -225,19 +258,22 @@ export interface FileRouteTypes {
     | '/admin'
     | '/availability'
     | '/blog'
+    | '/booking'
     | '/contact'
+    | '/faq'
     | '/gallery'
     | '/admin/availability'
     | '/admin/blog'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
+    | '/admin/tarifs'
     | '/blog/$slug'
     | '/suites/$suiteId'
     | '/suites/suite-ambre'
     | '/suites/suite-azur'
+    | '/suites/suite-jasmin'
     | '/suites/suite-olive'
-    | '/suites/suite-yasmin'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -246,13 +282,15 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AvailabilityRoute: typeof AvailabilityRoute
   BlogRoute: typeof BlogRouteWithChildren
+  BookingRoute: typeof BookingRoute
   ContactRoute: typeof ContactRoute
+  FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   SuitesSuiteIdRoute: typeof SuitesSuiteIdRoute
   SuitesSuiteAmbreRoute: typeof SuitesSuiteAmbreRoute
   SuitesSuiteAzurRoute: typeof SuitesSuiteAzurRoute
+  SuitesSuiteJasminRoute: typeof SuitesSuiteJasminRoute
   SuitesSuiteOliveRoute: typeof SuitesSuiteOliveRoute
-  SuitesSuiteYasminRoute: typeof SuitesSuiteYasminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -264,11 +302,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking': {
+      id: '/booking'
+      path: '/booking'
+      fullPath: '/booking'
+      preLoaderRoute: typeof BookingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -306,18 +358,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/suites/suite-yasmin': {
-      id: '/suites/suite-yasmin'
-      path: '/suites/suite-yasmin'
-      fullPath: '/suites/suite-yasmin'
-      preLoaderRoute: typeof SuitesSuiteYasminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/suites/suite-olive': {
       id: '/suites/suite-olive'
       path: '/suites/suite-olive'
       fullPath: '/suites/suite-olive'
       preLoaderRoute: typeof SuitesSuiteOliveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suites/suite-jasmin': {
+      id: '/suites/suite-jasmin'
+      path: '/suites/suite-jasmin'
+      fullPath: '/suites/suite-jasmin'
+      preLoaderRoute: typeof SuitesSuiteJasminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/suites/suite-azur': {
@@ -347,6 +399,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
+    }
+    '/admin/tarifs': {
+      id: '/admin/tarifs'
+      path: '/tarifs'
+      fullPath: '/admin/tarifs'
+      preLoaderRoute: typeof AdminTarifsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/reservations': {
       id: '/admin/reservations'
@@ -392,6 +451,7 @@ interface AdminRouteChildren {
   AdminClientsRoute: typeof AdminClientsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminReservationsRoute: typeof AdminReservationsRoute
+  AdminTarifsRoute: typeof AdminTarifsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -401,6 +461,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminClientsRoute: AdminClientsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminReservationsRoute: AdminReservationsRoute,
+  AdminTarifsRoute: AdminTarifsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -421,13 +482,15 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AvailabilityRoute: AvailabilityRoute,
   BlogRoute: BlogRouteWithChildren,
+  BookingRoute: BookingRoute,
   ContactRoute: ContactRoute,
+  FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   SuitesSuiteIdRoute: SuitesSuiteIdRoute,
   SuitesSuiteAmbreRoute: SuitesSuiteAmbreRoute,
   SuitesSuiteAzurRoute: SuitesSuiteAzurRoute,
+  SuitesSuiteJasminRoute: SuitesSuiteJasminRoute,
   SuitesSuiteOliveRoute: SuitesSuiteOliveRoute,
-  SuitesSuiteYasminRoute: SuitesSuiteYasminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 import { Op, fn, col, Sequelize } from 'sequelize'; // Correction : Import de Sequelize ici
+// Assurez-vous que le chemin relatif ../models/CustomPrice est correct selon votre structure de dossiers
+import { CustomPrice } from '../models/CustomPrice';
 
 export class ReservationController {
   private emailService: EmailService;
@@ -50,8 +52,9 @@ export class ReservationController {
         return res.status(400).json({ success: false, error: 'Dates invalides.' });
       }
 
-      const pricePerNight = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
-      const totalPrice = nights * pricePerNight;
+      //const pricePerNight = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+      //const totalPrice = nights * pricePerNight;
+      const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
       const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
       const reservation = await ReservationModel.create({
@@ -142,10 +145,16 @@ export class ReservationController {
           updateData.checkInDate || reservation.checkInDate,
           updateData.checkOutDate || reservation.checkOutDate
         );
+        //if (nights > 0) {
+         // const p = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+         // updateData.totalPrice = nights * p;
+        //}
         if (nights > 0) {
-          const p = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
-          updateData.totalPrice = nights * p;
-        }
+  updateData.totalPrice = await this.calculateTotalPrice(
+    updateData.checkInDate || reservation.checkInDate,
+    updateData.checkOutDate || reservation.checkOutDate
+  );
+}
       }
       await reservation.update(updateData);
       if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
@@ -262,6 +271,44 @@ export class ReservationController {
       return res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  private async calculateTotalPrice(checkIn: string, checkOut: string): Promise<number> {
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+
+  // 1. Récupérer toutes les exceptions de prix entre ces deux dates
+  const customPrices = await CustomPrice.findAll({
+    where: {
+      specificDate: {
+        [Op.between]: [checkIn, checkOut]
+      }
+    }
+  });
+
+  // Convertir en dictionnaire indexable pour un accès rapide
+  const priceMap: { [key: string]: number } = {};
+  customPrices.forEach(cp => {
+    priceMap[cp.specificDate] = parseFloat(cp.price as any);
+  });
+
+  let totalPrice = 0;
+  const currentCursor = new Date(start);
+
+  // 2. Parcourir chaque nuitée (on s'arrête le jour du check-out)
+  while (currentCursor < end) {
+    const dateStr = currentCursor.toISOString().split('T')[0];
+    
+    // Si un prix spécifique existe en BDD pour cette nuit, on l'applique, sinon prix de base
+    const nightPrice = priceMap[dateStr] !== undefined ? priceMap[dateStr] : basePrice;
+    totalPrice += nightPrice;
+
+    // Avancer d'un jour
+    currentCursor.setDate(currentCursor.getDate() + 1);
+  }
+
+  return totalPrice;
+}
 
   private calculateNights(checkIn: string, checkOut: string): number {
     const start = new Date(checkIn);
