@@ -6,7 +6,7 @@ import g1 from "@/assets/g1.jpeg";
 import g2 from "@/assets/g2.jpeg";
 import g6 from "@/assets/g6.jpeg";
 
-export const Route = createFileRoute("/suites/suite-yasmin")({
+export const Route = createFileRoute("/suites/suite-jasmin")({
   component: () => (
     <SuiteTemplate
       suiteId="suite-jasmin"

@@ -1,79 +1,49 @@
 // ============================================
-// Page Contact MODIFIÉE - Intégration calendrier
-// @/routes/contact.tsx (MODIFIÉ)
+// Page Contact — Version Black Édition Luxe
+// @/routes/contact.tsx
 // ============================================
 
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, MapPin, Phone, Check, ExternalLink } from "lucide-react";
+import { Mail, MapPin, Phone, Check } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Réservation & contact — B&B Hammamet" },
+      { title: "Contact & Services — B&B Hammamet" },
       {
         name: "description",
-        content:
-          "Demandez vos dates pour réserver la villa B&B à Hammamet en exclusivité.",
+        content: "Une question, une demande de partenariat ou besoin d'assistance ? Contactez l'équipe de Dar B&B.",
       },
-      { property: "og:title", content: "Contact — B&B Hammamet" },
     ],
-  }),
-  validateSearch: (search: Record<string, unknown>) => ({
-    checkIn: (search.checkIn as string) || undefined,
-    checkOut: (search.checkOut as string) || undefined,
   }),
   component: Contact,
 });
 
-// Utilisation des variables d'environnement de Vite
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 function Contact() {
   const { t } = useLang();
-  const { checkIn, checkOut } = useSearch({ from: "/contact" });
   const [sent, setSent] = useState(false);
-  
-  // Formater la date depuis le calendrier au format input HTML
-  function formatDateForInput(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toISOString().split("T")[0];
-  }
-
-  // Formater pour affichage
-  function formatDateForDisplay(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("fr-FR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    guests: "2",
-    arrival: checkIn ? formatDateForInput(checkIn) : "",
-    departure: checkOut ? formatDateForInput(checkOut) : "",
+    subject: "general",
     message: "",
   });
 
-  const AIRBNB_URL = "https://www.airbnb.com/h/votre-villa-hammamet";
-
-  // Coordonnées pour Dar d'Art
-  const mapUrl = `https://maps.google.com/maps?q=36.4101,10.5593&z=16&output=embed`;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
 
     try {
-      // Correction de la route avec API_BASE (Vite)
-      const response = await fetch(`${API_BASE}/reservations`, {
+      const response = await fetch(`${API_BASE}/contacts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,10 +53,8 @@ function Contact() {
           lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone,
-          numberOfGuests: parseInt(formData.guests),
-          checkInDate: new Date(formData.arrival),
-          checkOutDate: new Date(formData.departure),
-          specialRequests: formData.message,
+          subject: formData.subject,
+          message: formData.message,
         }),
       });
 
@@ -97,238 +65,224 @@ function Contact() {
           lastName: "",
           email: "",
           phone: "",
-          guests: "2",
-          arrival: "",
-          departure: "",
+          subject: "general",
           message: "",
         });
 
-        // Rediriger après 3 secondes
         setTimeout(() => {
-          window.location.href = "/";
-        }, 3000);
+          setSent(false);
+        }, 4000);
       } else {
         const error = await response.json();
-        alert(`Erreur: ${error.error}`);
+        setErrorMsg(error.error || "Une erreur est survenue.");
       }
     } catch (error) {
-      alert("Erreur lors de la soumission");
+      setErrorMsg("Impossible d'envoyer le message. Vérifiez votre connexion.");
       console.error(error);
     }
   };
 
   return (
     <SiteLayout>
-      <section className="container-luxe pt-16 pb-12">
-        <div className="eyebrow mb-4">— Contact</div>
-        <h1 className="font-display text-5xl md:text-7xl">
-          {t.contact.title}
-        </h1>
-        <p className="mt-4 text-muted-foreground max-w-xl">
-          {t.contact.sub}
-        </p>
-
-        {/* INFO SI DATES SÉLECTIONNÉES */}
-        {checkIn && checkOut && (
-          <div className="mt-8 p-4 bg-green-100/50 border border-green-300 inline-block">
-            <p className="text-sm font-semibold text-green-900">
-              ✓ Dates sélectionnées:
-            </p>
-            <p className="text-sm text-green-800">
-              {formatDateForDisplay(checkIn)} → {formatDateForDisplay(checkOut)}
-            </p>
+      {/* Conteneur principal plein écran noir */}
+      <div className="bg-neutral-950 text-white min-h-screen font-sans selection:bg-white selection:text-black">
+        
+        {/* En-tête de la page */}
+        <section className="container-luxe pt-24 pb-12">
+          <div className="text-[10px] tracking-[0.3em] uppercase text-neutral-400 mb-4">
+            — {t.contact.eyebrow}
           </div>
-        )}
-      </section>
+          <h1 className="font-display text-5xl md:text-7xl text-white tracking-tight">
+            {t.contact.title}
+          </h1>
+          <p className="mt-4 text-neutral-400 max-w-xl text-sm md:text-base leading-relaxed">
+            {t.contact.sub}
+          </p>
+        </section>
 
-      <section className="container-luxe pb-32 grid md:grid-cols-12 gap-12">
-        <div className="md:col-span-7">
-          <div className="mb-8 p-6 border border-border bg-accent/30">
-            <h3 className="text-sm font-bold tracking-widest uppercase mb-2">
-              {t.contact.localTitle || "Réservation Directe"}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {t.contact.localDesc ||
-                "Idéal pour les résidents locaux (paiement en TND ou virement)."}
-            </p>
-          </div>
+        {/* Section principale du contenu */}
+        <section className="container-luxe pb-32 grid lg:grid-cols-12 gap-16 items-start">
+          
+          {/* COLONNE GAUCHE : FORMULAIRE DE CONTACT */}
+          <div className="lg:col-span-7 space-y-8">
+            
+            {errorMsg && (
+              <div className="p-4 bg-red-950/40 border border-red-800 text-sm text-red-200 backdrop-blur-sm animate-fade-in">
+                {errorMsg}
+              </div>
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid sm:grid-cols-2 gap-6">
-              <Field label={t.contact.name} required>
-                <input
-                  required
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, firstName: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Nom" required>
-                <input
-                  required
-                  type="text"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lastName: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
-              <Field label={t.contact.email} required>
-                <input
-                  required
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
-              <Field label={t.contact.phone}>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
-              <Field label={t.contact.guests}>
+            {sent && (
+              <div className="p-4 bg-emerald-950/40 border border-emerald-800 text-sm text-emerald-200 flex items-center gap-2 backdrop-blur-sm animate-fade-in">
+                <Check className="h-4 w-4 text-emerald-400" /> {t.contact.success}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid sm:grid-cols-2 gap-6">
+                <Field label={t.contact.firstName} required>
+                  <input
+                    required
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
+                    className={inputCls}
+                    placeholder={t.contact.firstName}
+                  />
+                </Field>
+                
+                <Field label={t.contact.lastName} required>
+                  <input
+                    required
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
+                    className={inputCls}
+                    placeholder={t.contact.lastName}
+                  />
+                </Field>
+
+                <Field label={t.contact.email} required>
+                  <input
+                    required
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className={inputCls}
+                    placeholder="exemple@domaine.com"
+                  />
+                </Field>
+
+                <Field label={t.contact.phone}>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className={inputCls}
+                    placeholder="+216 -- --- ---"
+                  />
+                </Field>
+              </div>
+
+              <Field label={t.contact.subject} required>
                 <select
-                  value={formData.guests}
+                  value={formData.subject}
                   onChange={(e) =>
-                    setFormData({ ...formData, guests: e.target.value })
+                    setFormData({ ...formData, subject: e.target.value })
                   }
                   className={inputCls}
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
+                  <option value="general" className="bg-neutral-900 text-white">
+                    {t.contact.subjects.general}
+                  </option>
+                  <option value="service" className="bg-neutral-900 text-white">
+                    {t.contact.subjects.service}
+                  </option>
+                  <option value="partnership" className="bg-neutral-900 text-white">
+                    {t.contact.subjects.partnership}
+                  </option>
+                  <option value="support" className="bg-neutral-900 text-white">
+                    {t.contact.subjects.support}
+                  </option>
+                  <option value="other" className="bg-neutral-900 text-white">
+                    {t.contact.subjects.other}
+                  </option>
                 </select>
               </Field>
-              <Field label={t.contact.arrival} required>
-                <input
+
+              <Field label={t.contact.message} required>
+                <textarea
                   required
-                  type="date"
-                  value={formData.arrival}
+                  rows={6}
+                  value={formData.message}
                   onChange={(e) =>
-                    setFormData({ ...formData, arrival: e.target.value })
+                    setFormData({ ...formData, message: e.target.value })
                   }
                   className={inputCls}
+                  placeholder={t.contact.messagePlaceholder}
                 />
               </Field>
-              <Field label={t.contact.departure} required>
-                <input
-                  required
-                  type="date"
-                  value={formData.departure}
-                  onChange={(e) =>
-                    setFormData({ ...formData, departure: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
+
+              <button
+                type="submit"
+                disabled={sent}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-black font-semibold px-8 py-4 text-xs tracking-[0.25em] uppercase hover:bg-neutral-200 transition disabled:opacity-50"
+              >
+                {sent ? (
+                  <>
+                    <Check className="h-4 w-4 text-black" /> {t.contact.submit}
+                  </>
+                ) : (
+                  t.contact.submit
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* COLONNE DROITE : COORDONNÉES DIRECTES & CARTE CARRÉE */}
+          <aside className="lg:col-span-5 space-y-8 lg:sticky lg:top-24">
+            
+            {/* Blocs d'informations */}
+            <div className="space-y-6 border border-neutral-800 p-6 bg-neutral-900/40 backdrop-blur-sm">
+              <div>
+                <div className="text-[10px] tracking-[0.25em] uppercase text-neutral-400 font-bold mb-3">
+                  {t.contact.infoTitle}
+                </div>
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                  {t.contact.infoDesc}
+                </p>
+              </div>
+              
+              <ul className="space-y-4 text-sm border-t border-neutral-800 pt-6">
+                <li className="flex items-start gap-4">
+                  <MapPin className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
+                  <span className="text-neutral-200">Avenue de la Plage, 8050 Hammamet, Tunisie</span>
+                </li>
+                <li className="flex items-start gap-4">
+                  <Phone className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
+                  <span className="text-neutral-200">+216 72 000 000</span>
+                </li>
+                <li className="flex items-start gap-4">
+                  <Mail className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
+                  <span className="text-neutral-200">experience@bnb-villa.com</span>
+                </li>
+              </ul>
             </div>
-            <Field label={t.contact.message}>
-              <textarea
-                rows={5}
-                value={formData.message}
-                onChange={(e) =>
-                  setFormData({ ...formData, message: e.target.value })
-                }
-                className={inputCls}
+
+            {/* LA CARTE EN FORMAT CARRÉ PERFECT */}
+            <div className="w-full aspect-square overflow-hidden border border-neutral-800 shadow-2xl relative group">
+              <iframe
+                title="Carte Dar B&B"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2679.5964511206344!2d10.646715874933065!3d36.42130678896762!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13029f1a7e18f0a3%3A0x26c98417956920f1!2sDar%20B%26B!5e1!3m2!1sfr!2stn!4v1779715364207!5m2!1sfr!2stn"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen={true}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full grayscale invert opacity-70 transition-all duration-700 group-hover:grayscale-0 group-hover:invert-0 group-hover:opacity-100"
               />
-            </Field>
-            <button
-              type="submit"
-              disabled={sent}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-foreground text-background px-8 py-4 text-xs tracking-[0.25em] uppercase hover:opacity-90 transition disabled:opacity-60"
-            >
-              {sent ? (
-                <>
-                  <Check className="h-4 w-4" /> {t.contact.ok}
-                </>
-              ) : (
-                t.contact.submit
-              )}
-            </button>
-          </form>
-        </div>
+            </div>
 
-        <aside className="md:col-span-4 md:col-start-9 space-y-10">
-          {/* Section Airbnb pour les Internationaux */}
-          <div className="p-8 border border-foreground/10 bg-foreground/[0.02] flex flex-col items-center text-center">
-            <div className="eyebrow mb-4">International</div>
-            <h3 className="font-display text-2xl mb-4">
-              {t.contact.airbnbTitle || "Réserver via Airbnb"}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              {t.contact.airbnbDesc ||
-                "Pour nos clients internationaux, nous recommandons de passer par la plateforme Airbnb pour une sécurité optimale."}
-            </p>
-            <a
-              href={AIRBNB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-3 border border-foreground px-6 py-4 text-[10px] tracking-[0.3em] uppercase hover:bg-foreground hover:text-background transition-all duration-300"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {t.contact.airbnbAction || "Voir sur Airbnb"}
-            </a>
-          </div>
+          </aside>
+        </section>
 
-          <hr className="border-border" />
-
-          {/* Infos de contact */}
-          <div>
-            <div className="eyebrow mb-3">Dar B&amp;B</div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Une équipe à votre écoute, 7j/7. Réponse garantie sous 24 heures.
-            </p>
-          </div>
-          <ul className="space-y-4 text-sm">
-            <li className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 mt-0.5" /> Avenue de la Plage, 8050
-              Hammamet
-            </li>
-            <li className="flex items-start gap-3">
-              <Phone className="h-4 w-4 mt-0.5" /> +216 72 000 000
-            </li>
-            <li className="flex items-start gap-3">
-              <Mail className="h-4 w-4 mt-0.5" /> hello@bnb-hammamet.tn
-            </li>
-          </ul>
-        </aside>
-      </section>
-      
-      {/* SECTION GEOLOCALISATION */}
-      <section className="w-full h-[500px] overflow-hidden border-y border-stone-200 group relative">
-        <iframe
-          title="Carte Dar d'Art"
-          src={mapUrl}
-          className="h-full w-full grayscale contrast-[1.1] opacity-80 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
-          style={{ border: 0 }}
-          loading="lazy"
-          allowFullScreen
-        />
-        <div className="absolute bottom-10 left-10 bg-white p-6 shadow-xl hidden md:block">
-          <p className="text-[10px] tracking-widest uppercase font-bold">Localisation</p>
-          <p className="text-sm text-stone-500">Résidence Dar d'Art, Hammamet</p>
-        </div>
-      </section>
+      </div>
     </SiteLayout>
   );
 }
 
+// Styles d'input optimisés pour le thème Dark Luxury
 const inputCls =
-  "w-full bg-transparent border border-border focus:border-foreground transition px-4 py-3 text-sm outline-none";
+  "w-full bg-neutral-900/50 border border-neutral-800 text-white focus:border-white transition px-4 py-4 text-sm outline-none placeholder:text-neutral-600 appearance-none";
 
 function Field({
   label,
@@ -341,11 +295,11 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[0.7rem] tracking-[0.25em] uppercase text-muted-foreground">
+      <span className="text-[0.65rem] tracking-[0.25em] uppercase text-neutral-400 font-bold">
         {label}
-        {required && " *"}
+        {required && <span className="text-neutral-500"> *</span>}
       </span>
-      <div className="mt-2">{children}</div>
+      <div className="mt-2.5">{children}</div>
     </label>
   );
 }

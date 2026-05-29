@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, MapPin, Wine, X, GlassWater } from "lucide-react";
+
+import { ArrowRight, Wine, X, Car, Compass, ChefHat, Waves, HeartPulse, CalendarHeart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
@@ -13,12 +14,17 @@ import g1 from "@/assets/g1.jpeg";
 import g2 from "@/assets/g2.jpeg";
 import g4 from "@/assets/g4.jpeg";
 import g6 from "@/assets/g6.jpeg";
+import c2 from "@/assets/chef.jpg";
+import c1 from "@/assets/chauffeur.jpg";
+import c3 from "@/assets/c3.jpg";
+import c4 from "@/assets/c4.jpg";
+import c5 from "@/assets/c5.jpg";
+import c6 from "@/assets/c6.jpg";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
-// Type strict pour les identifiants de nos routes statiques
 type SuiteId = "suite-azur" | "suite-olive" | "suite-jasmin" | "suite-ambre";
 
 interface SuiteItem {
@@ -27,11 +33,22 @@ interface SuiteItem {
   d: string;
 }
 
-function Home() {
-  const { t } = useLang();
-  const [isWineOpen, setIsWineOpen] = useState(false);
+interface ExperienceItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  icon: any;
+  description: string;
+  modalTitle: string;
+  content: React.ReactNode;
+}
 
-  // Mapping des images avec les identifiants statiques
+function Home() {
+  const { t, lang } = useLang();
+  const [isWineOpen, setIsWineOpen] = useState(false);
+  const [activeExperience, setActiveExperience] = useState<ExperienceItem | null>(null);
+
   const suiteImages: Record<SuiteId, string> = {
     "suite-azur": g1,
     "suite-olive": g2,
@@ -39,207 +56,258 @@ function Home() {
     "suite-ambre": g6,
   };
 
-  // Bloquer le scroll quand la modal de la carte des vins est ouverte
+  const experiences: ExperienceItem[] = [
+  {
+    id: "chef",
+    title: lang === "en" ? "Private Chef" : "Chef Privé",
+    subtitle: lang === "en" ? "Gastronomic Experience" : "Expérience Gastronomique",
+    image: c2,
+    icon: ChefHat,
+    description: lang === "en" ? "Refined culinary experiences inspired by Tunisian and international flavors." : "Expériences culinaires raffinées inspirées des saveurs tunisiennes et internationales.",
+    modalTitle: lang === "en" ? "Our Private Chef" : "Chef Privé à la Villa",
+    content: <p>{lang === "en" ? "Enjoy personalized menus prepared by our chef." : "Profitez de menus personnalisés préparés par notre chef directement à la villa."}</p>
+  },
+  {
+    id: "transfers",
+    title: lang === "en" ? "Private Transfers" : "Transferts Privés",
+    subtitle: lang === "en" ? "Airport & Travels" : "Aéroports & Navettes",
+    image: c1,
+    icon: Car,
+    description: lang === "en" ? "Premium drivers for simple, comfortable, and stress-free arrivals." : "Service de pickup et drop-off pour des arrivées simples, confortables et sans stress.",
+    modalTitle: lang === "en" ? "Airport Transfers" : "Transferts Privés",
+    content: <p>{lang === "en" ? "Luxury fleet for your travels." : "Flotte de luxe pour vos déplacements."}</p>
+  },
+  {
+    id: "discovery",
+    title: lang === "en" ? "Local Discovery" : "Découverte Locale",
+    subtitle: lang === "en" ? "Hammamet & Beyond" : "Hammamet autrement",
+    image: c6,
+    icon: Compass,
+    description: lang === "en" ? "Medina tours, beaches, and exclusive recommendations." : "Visites de la médina, plages, expériences locales et recommandations exclusives.",
+    modalTitle: lang === "en" ? "Explore Tunisia" : "Découverte de la Tunisie",
+    content: <p>{lang === "en" ? "Guided cultural tours and local hidden gems." : "Visites culturelles guidées et secrets locaux."}</p>
+  },
+  {
+    id: "wellness",
+    title: lang === "en" ? "Wellness" : "Bien-être",
+    subtitle: lang === "en" ? "Relaxation & Spa" : "Détente & Relaxation",
+    image: c5,
+    icon: HeartPulse,
+    description: lang === "en" ? "Massages, private yoga, and spaces designed to disconnect." : "Moments de détente, massages, yoga privé et espaces conçus pour déconnecter.",
+    modalTitle: lang === "en" ? "Wellness & Relaxation" : "Bien-être & Relaxation",
+    content: <p>{lang === "en" ? "Rejuvenate your body and mind." : "Ressourcez votre corps et votre esprit."}</p>
+  },
+  {
+    id: "activities",
+    title: lang === "en" ? "Activities & Sports" : "Sports & Loisirs",
+    subtitle: lang === "en" ? "Outdoor Adventures" : "Activités & Outdoor",
+    image: c4,
+    icon: Waves,
+    description: lang === "en" ? "Padel, beach activities, and custom outdoor experiences." : "Padel, activités plage, expériences outdoor et activités personnalisées.",
+    modalTitle: lang === "en" ? "Tailored Activities" : "Nos Activités Sportives",
+    content: <p>{lang === "en" ? "Custom experiences according to your desires." : "Activités personnalisées selon vos envies."}</p>
+  },
+  {
+    id: "events",
+    title: lang === "en" ? "Private Events" : "Événements Privés",
+    subtitle: lang === "en" ? "Special Celebrations" : "Célébrations Intimistes",
+    image: c3,
+    icon: CalendarHeart,
+    description: lang === "en" ? "Perfect for birthdays, romantic getaways, and group stays." : "Parfait pour anniversaires, escapades romantiques et séjours en groupe.",
+    modalTitle: lang === "en" ? "Private Celebrations" : "Vos Événements Privés",
+    content: <p>{lang === "en" ? "Celebrate special moments with us." : "Célébrez vos moments spéciaux avec nous."}</p>
+  }
+];
+
+  const duplicatedExperiences = [...experiences, ...experiences, ...experiences];
+
   useEffect(() => {
-    if (isWineOpen) document.body.style.overflow = "hidden";
+    if (isWineOpen || activeExperience) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "unset";
-  }, [isWineOpen]);
+  }, [isWineOpen, activeExperience]);
 
   return (
     <SiteLayout transparentHeader>
-      {/* --- HERO --- */}
-      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-foreground">
+      {/* --- HERO (Identitaire, s'ouvre sur l'image) --- */}
+      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black">
         <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
           {[heroImg1, heroImg2, heroImg3].map((img, index) => (
             <div key={index} className="relative h-full w-full overflow-hidden">
               <motion.img
                 src={img}
-                alt={`Villa B&B Hammamet - Vue ${index + 1}`}
+                alt={`Vue ${index + 1}`}
                 className="h-full w-full object-cover"
-                width={640}
-                height={1280}
                 initial={{ scale: 1.15, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{
-                  duration: 1.6,
-                  delay: index * 0.2,
-                  ease: [0.25, 1, 0.5, 1],
-                }}
+                transition={{ duration: 1.6, delay: index * 0.2, ease: [0.25, 1, 0.5, 1] }}
               />
             </div>
           ))}
         </div>
-
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/70" />
-
         <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
-            className="max-w-3xl"
-          >
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
             <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
             <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
             <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
-
             <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-foreground px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
+              <Link to="/booking" className="inline-flex items-center gap-3 bg-white text-black px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
                 {t.hero.cta} <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/gallery" className="inline-flex items-center gap-3 border border-white/60 text-white px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white hover:text-foreground transition">
-                {t.hero.cta2}
               </Link>
             </div>
           </motion.div>
-
-          <div className="hidden md:flex absolute right-10 bottom-12 items-center gap-2 text-xs tracking-[0.25em] uppercase">
-            <MapPin className="h-3.5 w-3.5" /> Hammamet · Tunisie
-          </div>
         </div>
       </section>
 
-      {/* --- INTRO & FEATURES --- */}
-      <section className="container-luxe py-28 md:py-40">
-        <div className="grid md:grid-cols-12 gap-10 md:gap-16 items-end">
-          <div className="md:col-span-5">
-            <div className="eyebrow mb-6">— {t.intro.eyebrow}</div>
-            <h2 className="text-4xl md:text-5xl leading-tight font-display">{t.intro.title}</h2>
+      {/* --- CONTAINER ENTIÈREMENT DARK MODE (Noir Pur) --- */}
+      <div className="bg-black text-white dark">
+        
+        <section className="container-luxe py-28 md:py-40">
+  {/* Texte d'introduction */}
+  <div className="max-w-4xl mx-auto text-center mb-20">
+    <div className="eyebrow mb-6 text-stone-500">— {t.philosophy.eyebrow}</div>
+    <h2 className="text-4xl md:text-5xl leading-tight font-display text-white mb-8">
+      {t.philosophy.title}
+    </h2>
+    <p className="text-lg md:text-xl leading-relaxed text-stone-300 font-light">
+      {t.philosophy.subtitle}
+    </p>
+  </div>
+
+  {/* Grille des 6 points */}
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-stone-900 border border-stone-900">
+    {t.philosophy.points.map((point: string, index: number) => (
+      <div 
+        key={index} 
+        className="bg-black p-10 flex flex-col items-center justify-center text-center group hover:bg-stone-950 transition-colors duration-500"
+      >
+        <span className="text-stone-600 mb-4 text-xs tracking-[0.2em] font-medium">
+          0{index + 1}
+        </span>
+        <p className="text-sm uppercase tracking-widest text-stone-300 group-hover:text-white transition-colors">
+          {point}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>
+
+        {/* --- SUITES SECTION --- */}
+        <section className="container-luxe py-28 md:py-40 border-t border-stone-900" id="suites">
+          <div className="mb-16 max-w-2xl">
+            <div className="eyebrow mb-6 text-stone-400">— {t.suites.eyebrow}</div>
+            <h2 className="text-4xl md:text-5xl font-display mb-6 text-white">{t.suites.title}</h2>
           </div>
-          <div className="md:col-span-6 md:col-start-7">
-            <p className="text-lg leading-relaxed text-muted-foreground">{t.intro.body}</p>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-4 gap-px mt-20 bg-border">
-          {t.features.map((f: any) => (
-            <div key={f.t} className="bg-background p-8 group hover:bg-accent transition-colors duration-500">
-              <div className="font-display text-2xl mb-3">{f.t}</div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --- SUITES SECTION --- */}
-      <section className="container-luxe py-28 md:py-40 border-t border-border">
-        <div className="mb-16 max-w-2xl">
-          <div className="eyebrow mb-6">— {t.suites.eyebrow}</div>
-          <h2 className="text-4xl md:text-5xl font-display mb-6">{t.suites.title}</h2>
-          <p className="text-muted-foreground">{t.suites.sub}</p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {t.suites.items.map((suite: SuiteItem) => (
-            <Link
-              key={suite.id}
-              // Redirection directe vers la route statique (ex: /suites/suite-azur)
-              to={`/suites/${suite.id}`}
-              className="group block overflow-hidden"
-            >
-              <div className="aspect-[3/4] overflow-hidden mb-6 bg-accent">
-                <img
-                  src={suiteImages[suite.id]}
-                  alt={suite.t}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              </div>
-              <div className="flex justify-between items-end border-b border-border pb-4">
-                <div>
-                  <h3 className="text-xl font-display">{suite.t}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">{suite.d}</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {t.suites.items.map((suite: SuiteItem) => (
+              <Link key={suite.id} to={`/suites/${suite.id}`} className="group block overflow-hidden">
+                <div className="aspect-[3/4] overflow-hidden mb-6 bg-stone-950">
+                  <img src={suiteImages[suite.id]} alt={suite.t} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
-                <ArrowRight className="h-4 w-4 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+                <div className="flex justify-between items-end border-b border-stone-900 pb-4">
+                  <div>
+                    <h3 className="text-xl font-display text-white">{suite.t}</h3>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-white opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-      {/* --- WINE & SELECTION --- */}
-      <section className="bg-foreground text-background py-28 md:py-40 overflow-hidden">
-        <div className="container-luxe grid md:grid-cols-2 gap-16 items-center">
-          <div className="relative group cursor-pointer" onClick={() => setIsWineOpen(true)}>
-            <div className="aspect-video overflow-hidden border border-background/10">
-              <img src={g4} alt="Selection" className="h-full w-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-1000" />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-20 w-20 rounded-full border border-background/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-background group-hover:text-foreground transition-all duration-500">
-                <Wine className="h-8 w-8" />
-              </div>
+        {/* --- CARROUSEL INFINI EN CONTINU --- */}
+        <section className="py-28 md:py-40 border-t border-stone-900 bg-stone-950/40 overflow-hidden">
+          <div className="container-luxe mb-12">
+            <div className="eyebrow mb-6 text-stone-400">— {lang === "en" ? "Concierge Services" : "Conciergerie Privée"}</div>
+            <h2 className="text-4xl md:text-5xl font-display text-white">{lang === "en" ? "Tailored Experiences" : "Expériences sur Mesure"}</h2>
+          </div>
+
+          <div className="pause-on-hover w-full overflow-hidden relative select-none cursor-pointer">
+            <div className="absolute inset-y-0 left-0 w-16 md:w-32 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-16 md:w-32 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
+
+            <div className="animate-marquee gap-8 pr-8">
+              {duplicatedExperiences.map((exp, index) => {
+                const Icon = exp.icon;
+                return (
+                  <div key={`${exp.id}-${index}`} onClick={() => setActiveExperience(exp)} className="w-[280px] md:w-[360px] flex-shrink-0 group">
+                    <div className="aspect-[4/5] overflow-hidden mb-6 relative bg-stone-950">
+                      <img src={exp.image} alt={exp.title} className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
+                      <div className="absolute bottom-6 left-6 h-12 w-12 rounded-full border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-500">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="space-y-2 border-b border-stone-900 pb-6">
+                      <span className="text-[10px] tracking-[0.25em] uppercase text-stone-500 block">{exp.subtitle}</span>
+                      <h3 className="font-display text-2xl text-white group-hover:text-stone-300 transition-colors">{exp.title}</h3>
+                      <p className="text-sm text-stone-400 font-light line-clamp-2 leading-relaxed">{exp.description}</p>
+                      <span className="inline-flex items-center gap-2 text-[10px] tracking-widest uppercase font-medium pt-2 text-white group-hover:underline underline-offset-4">
+                        {lang === "en" ? "Learn more" : "En savoir plus"} →
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div>
-            <div className="text-[0.7rem] tracking-[0.35em] uppercase text-background/50 mb-6">— {t.wine.eyebrow}</div>
-            <h2 className="text-4xl md:text-5xl font-display mb-6">{t.wine.title}</h2>
-            <p className="text-background/70 mb-10 leading-relaxed max-w-md">{t.wine.sub}</p>
-            <button
-              onClick={() => setIsWineOpen(true)}
-              className="inline-flex items-center gap-3 border border-background/30 px-8 py-4 text-[10px] tracking-[0.3em] uppercase hover:bg-background hover:text-foreground transition-all"
-            >
-              {t.wine.cta}
-            </button>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* --- WINE MODAL --- */}
+        
+
+        <section className="bg-stone-950 py-28 md:py-40 border-t border-stone-900">
+  <div className="container-luxe grid md:grid-cols-2 gap-16 items-center">
+    <div>
+      <div className="eyebrow mb-6 text-stone-500">— {t.questions.eyebrow}</div>
+      <h2 className="text-4xl md:text-5xl leading-tight font-display text-white max-w-lg">
+        {t.questions.title}
+      </h2>
+    </div>
+    
+    <div className="bg-black border border-stone-900 p-10 md:p-14 shadow-xl">
+      <p className="text-stone-400 leading-relaxed">
+        {t.questions.sub}
+      </p>
+      
+      <Link 
+        to="/contact" 
+        className="mt-10 inline-flex items-center gap-3 bg-white text-black px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-stone-200 transition w-full justify-center sm:w-auto"
+      >
+        {t.questions.cta} <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  </div>
+</section>
+
+      </div> {/* --- FIN DU WRAPPER DARK MODE --- */}
+
+      {/* --- MODALE DYNAMIQUE DES EXPERIENCES --- */}
       <AnimatePresence>
-        {isWineOpen && (
+        {activeExperience && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setActiveExperience(null)}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-md"
           >
             <motion.div
-              initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-              className="bg-background text-foreground w-full max-w-3xl max-h-[90svh] overflow-y-auto p-8 md:p-16 relative"
+              initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-black text-white w-full max-w-2xl max-h-[90svh] overflow-y-auto p-8 md:p-14 relative shadow-2xl border border-stone-900"
             >
-              <button onClick={() => setIsWineOpen(false)} className="absolute top-8 right-8 p-2 hover:bg-accent rounded-full transition-colors">
-                <X className="h-6 w-6" />
+              <button onClick={() => setActiveExperience(null)} className="absolute top-6 right-6 p-2 text-stone-400 hover:text-white transition-colors z-10">
+                <X className="h-5 w-5" />
               </button>
-
-              <div className="text-center mb-16">
-                <GlassWater className="h-8 w-8 mx-auto mb-6 text-muted-foreground" />
-                <h2 className="text-4xl font-display mb-2">{t.wine.modalTitle}</h2>
-                <div className="h-px w-20 bg-border mx-auto mt-6" />
+              <div className="mb-8">
+                <span className="text-[10px] tracking-[0.3em] uppercase text-stone-500 block mb-2">{activeExperience.subtitle}</span>
+                <h2 className="text-3xl md:text-4xl font-display mb-4 text-white">{activeExperience.modalTitle}</h2>
+                <div className="h-px w-16 bg-stone-900 mt-4" />
               </div>
-
-              <div className="space-y-12">
-                <div className="grid md:grid-cols-2 gap-12">
-                  <div className="space-y-6">
-                    <h4 className="text-[0.65rem] tracking-[0.3em] uppercase text-muted-foreground border-b pb-2">Vins Rouges</h4>
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-medium text-sm">Vieux Magnon</span>
-                      <span className="text-xs text-muted-foreground">95 TND</span>
-                    </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-medium text-sm">Château Kurubis</span>
-                      <span className="text-xs text-muted-foreground">120 TND</span>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <h4 className="text-[0.65rem] tracking-[0.3em] uppercase text-muted-foreground border-b pb-2">Vins Blancs</h4>
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-medium text-sm">Terres de Carthage</span>
-                      <span className="text-xs text-muted-foreground">80 TND</span>
-                    </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-medium text-sm">Muscat Sec de Kelibia</span>
-                      <span className="text-xs text-muted-foreground">75 TND</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="mt-6">
+                {activeExperience.content}
               </div>
-
-              <div className="mt-20 pt-8 border-t border-border text-center">
-                <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {t.wine.disclaimer}
-                </p>
-                <button
-                  onClick={() => setIsWineOpen(false)}
-                  className="mt-8 text-[10px] uppercase tracking-widest underline underline-offset-4"
-                >
-                  {t.wine.close}
+              <div className="mt-12 pt-6 border-t border-stone-900 text-center">
+                <button onClick={() => setActiveExperience(null)} className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-white transition-colors underline underline-offset-4">
+                  {lang === "en" ? "Close window" : "Fermer la fenêtre"}
                 </button>
               </div>
             </motion.div>
@@ -247,26 +315,46 @@ function Home() {
         )}
       </AnimatePresence>
 
-      {/* --- PRICING --- */}
-      <section className="bg-accent py-28 md:py-40">
-        <div className="container-luxe grid md:grid-cols-2 gap-16 items-center">
-          <div>
-            <div className="eyebrow mb-6">— {t.pricing.eyebrow}</div>
-            <h2 className="text-4xl md:text-5xl leading-tight font-display text-foreground">{t.pricing.title}</h2>
-          </div>
-          <div className="bg-background border border-border p-10 md:p-14 shadow-sm">
-            <div className="text-xs tracking-[0.3em] uppercase text-muted-foreground">{t.pricing.from}</div>
-            <div className="mt-3 flex items-baseline gap-3 text-foreground">
-              <span className="font-display text-7xl">{t.pricing.price}</span>
-              <span className="text-sm opacity-60">{t.pricing.per}</span>
-            </div>
-            <p className="mt-6 text-sm text-muted-foreground italic">{t.pricing.note}</p>
-            <Link to="/contact" className="mt-10 inline-flex items-center gap-3 bg-foreground text-background px-7 py-4 text-xs tracking-[0.25em] uppercase hover:opacity-90 transition w-full justify-center sm:w-auto">
-              {t.pricing.cta} <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* --- MODALE CAVE A VINS (ADAPTÉE EN SOMBRE CHIC AUSSI) --- */}
+      <AnimatePresence>
+        {isWineOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setIsWineOpen(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-black text-white w-full max-w-3xl max-h-[90svh] overflow-y-auto p-8 md:p-16 relative border border-stone-900"
+            >
+              <button onClick={() => setIsWineOpen(false)} className="absolute top-8 right-8 p-2 text-stone-400 hover:text-white transition-colors">
+                <X className="h-6 w-6" />
+              </button>
+              <div className="text-center mb-16">
+                <GlassWater className="h-8 w-8 mx-auto mb-6 text-stone-400" />
+                <h2 className="text-4xl font-display mb-2 text-white">{t.wine.modalTitle}</h2>
+                <div className="h-px w-20 bg-stone-900 mx-auto mt-6" />
+              </div>
+              <div className="space-y-12">
+                <div className="grid md:grid-cols-2 gap-12">
+                  <div className="space-y-6">
+                    <h4 className="text-[0.65rem] tracking-[0.3em] uppercase text-stone-400 border-b border-stone-900 pb-2">Vins Rouges</h4>
+                    <div className="flex justify-between items-baseline">
+                      <span className="font-medium text-sm text-white">Vieux Magon</span>
+                      <span className="text-xs text-stone-400">95 TND</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-20 pt-8 border-t border-stone-900 text-center">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-stone-500">{t.wine.disclaimer}</p>
+                <button onClick={() => setIsWineOpen(false)} className="mt-8 text-[10px] uppercase tracking-widest text-stone-400 hover:text-white underline underline-offset-4">{t.wine.close}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </SiteLayout>
   );
 }

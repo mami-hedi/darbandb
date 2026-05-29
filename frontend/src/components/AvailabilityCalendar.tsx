@@ -60,7 +60,7 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
     if (!checkIn || !checkOut) return;
     
     navigate({
-      to: '/contact',
+      to: '/booking',
       search: {
         checkIn: checkIn,
         checkOut: checkOut,

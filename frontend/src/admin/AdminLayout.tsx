@@ -1,24 +1,32 @@
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, LogOut, ExternalLink } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  CalendarRange, 
+  Users, 
+  FileText, 
+  CalendarCheck, 
+  Coins, // <-- Nouvelle icône ajoutée pour les Tarifs
+  LogOut, 
+  ExternalLink 
+} from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+
 const nav: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/reservations", label: "Réservations", icon: CalendarRange },
   { to: "/admin/clients", label: "Clients", icon: Users },
+  { to: "/admin/tarifs", label: "Tarifs", icon: Coins }, // <-- Onglet inséré ici
   { to: "/admin/blog", label: "Blog", icon: FileText },
   { to: "/admin/availability", label: "Disponibilité", icon: CalendarCheck },
 ];
 
 function Shell() {
-  // On utilise "isAuthenticated" (et on simule un email fictif si besoin de l'afficher)
   const { isAuthenticated, logout } = useAdminAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-
-  // TOUTES les redirections automatiques vers /admin/login ont été supprimées d'ici
   
   return (
     <div className="min-h-screen bg-secondary/30 flex">
@@ -49,7 +57,6 @@ function Shell() {
           <Link to="/" className="flex items-center gap-3 px-4 py-2 text-xs text-background/70 hover:text-background">
             <ExternalLink className="h-3.5 w-3.5" /> Voir le site
           </Link>
-          {/* Email fictif pour éviter que le composant crash */}
           <div className="px-4 text-[0.65rem] uppercase tracking-wider opacity-60 truncate">admin@bb-hammamet.com</div>
           <button
             onClick={() => { logout(); navigate({ to: "/" }); }}
@@ -67,7 +74,7 @@ function Shell() {
           <div className="font-display text-xl">B&amp;B Admin</div>
           <button onClick={() => { logout(); navigate({ to: "/" }); }} className="text-xs flex items-center gap-2"><LogOut className="h-4 w-4" /> Sortir</button>
         </div>
-        <div className="md:hidden flex overflow-x-auto bg-foreground text-background border-t border-background/10">
+        <div className="md:hidden flex overflow-x-auto bg-foreground text-background border-t border-background/10ss">
           {nav.map((n) => {
             const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
             return (
