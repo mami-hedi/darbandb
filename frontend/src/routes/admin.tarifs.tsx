@@ -6,7 +6,7 @@ import { format, startOfMonth, endOfMonth, addMonths, eachDayOfInterval } from "
 import { useDailyPrices } from "../hooks/useDailyPrices";
 import { parseApiPrice } from "../utils/dateHelper";
 import { Calendar, Save, Trash2, DollarSign, AlertCircle, CheckCircle, Loader } from "lucide-react";
-import "react-day-picker/dist/style.css";
+import "react-day-picker/src/style.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
@@ -46,7 +46,7 @@ function AdminTarifs() {
       const price = getPriceForDate(selectedDay);
       setInputPrice(price.toString());
     }
-  }, [selectedDay, getPriceForDate]);
+  }, [selectedDay]);
 
   // Initialiser le prix de base
   useEffect(() => {
