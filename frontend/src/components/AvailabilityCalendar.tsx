@@ -1,8 +1,14 @@
+// ============================================
+// Component: AvailabilityCalendar (Bilingue + Tarifs Dynamiques)
+// @/components/AvailabilityCalendar.tsx
+// ============================================
+
 import { useEffect, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLang } from '@/i18n/LanguageContext';
-import { useNavigate } from '@tanstack/react-router'; // Import pour la redirection
+import { useNavigate } from '@tanstack/react-router';
+import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 
 interface CalendarDay {
   date: string;
@@ -23,69 +29,112 @@ interface AvailabilityCalendarProps {
 
 export function AvailabilityCalendar({ isAdmin = false, onUpdate }: AvailabilityCalendarProps) {
   const { lang } = useLang();
-  const navigate = useNavigate(); // Hook de navigation
-  
+  const navigate = useNavigate();
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  // État calendrier
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendar, setCalendar] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // État sélection dates
   const [checkIn, setCheckIn] = useState<string | null>(null);
   const [checkOut, setCheckOut] = useState<string | null>(null);
   const [priceInfo, setPriceInfo] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Correction ici : Utilisation de import.meta.env.VITE_API_URL pour Vite
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  // État tarifs dynamiques
+  const [basePrice, setBasePrice] = useState<number>(150);
+  const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
 
+  // ─── Fetch disponibilités ───────────────────────────────────────────────────
   const fetchCalendar = useCallback(async () => {
     setLoading(true);
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
-      const response = await fetch(`${API_BASE}/availability/calendar?year=${year}&month=${month}`);
+      const response = await fetch(
+        `${API_BASE}/availability/calendar?year=${year}&month=${month}`
+      );
       const data = await response.json();
       setCalendar(data.data || []);
-    } catch (err) {
+    } catch {
       setError(lang === 'fr' ? 'Erreur de connexion' : 'Connection error');
     } finally {
       setLoading(false);
     }
   }, [currentDate, API_BASE, lang]);
 
+  // ─── Fetch tarifs dynamiques ────────────────────────────────────────────────
+  const fetchPrices = useCallback(async (month: Date) => {
+    setLoadingPrices(true);
+    try {
+      const start = format(startOfMonth(month), 'yyyy-MM-dd');
+      const end = format(endOfMonth(addMonths(month, 1)), 'yyyy-MM-dd');
+      const res = await fetch(
+        `${API_BASE}/settings/prices/range?start=${start}&end=${end}`
+      );
+      const result = await res.json();
+      if (result.success) {
+        setBasePrice(result.basePrice);
+        setCustomPrices(result.customPrices || {});
+      }
+    } catch (err) {
+      console.error('Erreur chargement tarifs:', err);
+    } finally {
+      setLoadingPrices(false);
+    }
+  }, [API_BASE]);
+
+  // Déclencher les deux fetches au changement de mois
   useEffect(() => {
     fetchCalendar();
-  }, [fetchCalendar]);
+    fetchPrices(currentDate);
+  }, [fetchCalendar, fetchPrices, currentDate]);
 
-  // Redirection vers la page Contact avec les dates
+  // ─── Utilitaire prix ────────────────────────────────────────────────────────
+  const getPriceForDate = (dateStr: string): number => {
+    return customPrices[dateStr] !== undefined ? customPrices[dateStr] : basePrice;
+  };
+
+  // ─── Navigation mois ────────────────────────────────────────────────────────
+  const goToPrevMonth = () =>
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  const goToNextMonth = () =>
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+
+  // ─── Redirection vers /booking ──────────────────────────────────────────────
   const handleRedirectToContact = () => {
     if (!checkIn || !checkOut) return;
-    
     navigate({
       to: '/booking',
-      search: {
-        checkIn: checkIn,
-        checkOut: checkOut,
-      },
+      search: { checkIn, checkOut },
     });
   };
 
+  // ─── Admin : toggle disponibilité ──────────────────────────────────────────
   const toggleAvailability = async (day: CalendarDay) => {
     const oldCalendar = [...calendar];
-    setCalendar(calendar.map(d => d.date === day.date ? { ...d, available: !d.available } : d));
-
+    setCalendar(calendar.map(d =>
+      d.date === day.date ? { ...d, available: !d.available } : d
+    ));
     try {
       const response = await fetch(`${API_BASE}/availability/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: day.date, available: !day.available })
+        body: JSON.stringify({ date: day.date, available: !day.available }),
       });
       if (!response.ok) throw new Error();
       if (onUpdate) onUpdate();
-    } catch (err) {
+    } catch {
       setCalendar(oldCalendar);
-      setError("Erreur lors de la mise à jour");
+      setError('Erreur lors de la mise à jour');
     }
   };
 
+  // ─── Clic sur une date ──────────────────────────────────────────────────────
   const handleDateClick = async (day: CalendarDay) => {
     if (isAdmin) return toggleAvailability(day);
     if (!day.available) return;
@@ -100,80 +149,221 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
         return;
       }
       setCheckOut(day.date);
-      
       try {
-        const res = await fetch(`${API_BASE}/availability/price?checkIn=${checkIn}&checkOut=${day.date}`);
+        const res = await fetch(
+          `${API_BASE}/availability/price?checkIn=${checkIn}&checkOut=${day.date}`
+        );
         const data = await res.json();
         if (data.success) setPriceInfo(data.data);
       } catch (err) {
-        console.error("Erreur prix:", err);
+        console.error('Erreur prix:', err);
       }
     }
   };
 
+  // ─── Helpers UI ─────────────────────────────────────────────────────────────
   const isInRange = (dateStr: string) => {
     if (!checkIn || !checkOut) return false;
     return dateStr > checkIn && dateStr < checkOut;
   };
 
-  const monthName = currentDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' });
-  const weekDays = lang === 'fr' ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+  const monthName = currentDate.toLocaleDateString(
+    lang === 'fr' ? 'fr-FR' : 'en-US',
+    { month: 'long', year: 'numeric' }
+  );
 
+  const weekDays =
+    lang === 'fr'
+      ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const firstDay = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  ).getDay();
+
+  // ─── Rendu ──────────────────────────────────────────────────────────────────
   return (
-    <div className={cn("w-full bg-white", !isAdmin && "max-w-2xl mx-auto p-6 border border-border shadow-sm")}>
+    <div
+      className={cn(
+        'w-full bg-white',
+        !isAdmin && 'max-w-2xl mx-auto p-6 border border-border shadow-sm'
+      )}
+    >
       {!isAdmin && (
         <div className="mb-8">
-          <h2 className="text-2xl font-display">{lang === 'fr' ? 'Vérifier la disponibilité' : 'Check Availability'}</h2>
+          <h2 className="text-2xl font-display">
+            {lang === 'fr' ? 'Vérifier la disponibilité' : 'Check Availability'}
+          </h2>
         </div>
       )}
 
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      {/* Rendu du prix et BOUTON DE REDIRECTION */}
+      {/* ── Récapitulatif prix + bouton réserver ── */}
       {!isAdmin && priceInfo && checkIn && checkOut && (
         <div className="mb-6 p-4 bg-stone-50 border border-stone-200 animate-in fade-in zoom-in duration-300">
-           <div className="flex justify-between items-center text-sm mb-4 font-bold">
-             <span>{priceInfo.nights} {lang === 'fr' ? 'Nuits' : 'Nights'}</span>
-             <span className="text-xl">{priceInfo.totalPrice}€</span>
-           </div>
-           <button 
+          <div className="flex justify-between items-center text-sm mb-1">
+            <span className="text-stone-500">
+              {priceInfo.nights}{' '}
+              {lang === 'fr'
+                ? priceInfo.nights > 1 ? 'nuits' : 'nuit'
+                : priceInfo.nights > 1 ? 'nights' : 'night'}
+            </span>
+            <span className="text-xl font-bold">{priceInfo.totalPrice} DT</span>
+          </div>
+          <p className="text-[10px] text-stone-400 mb-4">
+            {lang === 'fr' ? 'Tarif calculé selon les prix en vigueur' : 'Price calculated based on current rates'}
+          </p>
+          <button
             onClick={handleRedirectToContact}
             className="w-full bg-stone-950 text-white py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-stone-800 transition-colors"
-           >
-             {lang === 'fr' ? 'Réserver' : 'Book Now'}
-           </button>
+          >
+            {lang === 'fr' ? 'Réserver' : 'Book Now'}
+          </button>
         </div>
       )}
 
-      {/* Navigation Calendrier */}
-      <div className="flex items-center justify-between mb-8">
-        <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft size={20}/></button>
-        <h3 className="text-sm font-bold uppercase tracking-widest">{monthName}</h3>
-        <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))} className="p-2 hover:bg-stone-100 rounded-full"><ChevronRight size={20}/></button>
+      {/* ── Navigation mois ── */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={goToPrevMonth}
+          className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold uppercase tracking-widest capitalize">
+            {monthName}
+          </h3>
+          {loadingPrices && (
+            <span className="text-[10px] text-stone-400 animate-pulse">
+              {lang === 'fr' ? 'Tarifs...' : 'Rates...'}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={goToNextMonth}
+          className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+        >
+          <ChevronRight size={20} />
+        </button>
       </div>
 
+      {/* ── Grille calendrier ── */}
       <div className="grid grid-cols-7 gap-1 relative">
-        {loading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-20">Chargement...</div>}
-        {weekDays.map(d => <div key={d} className="h-10 flex items-center justify-center text-[10px] font-bold text-stone-400 uppercase">{d}</div>)}
-        {Array(firstDay).fill(null).map((_, i) => <div key={i} className="h-12 bg-stone-50/30" />)}
-        {calendar.map((day) => (
-          <button
-            key={day.date}
-            onClick={() => handleDateClick(day)}
-            className={cn(
-              'h-12 flex flex-col items-center justify-center text-xs font-medium rounded-sm transition-all relative',
-              day.available ? 'bg-white border border-stone-100 hover:border-stone-900' : 'bg-stone-100 text-stone-300',
-              (day.date === checkIn || day.date === checkOut) && 'bg-stone-950 text-white z-10',
-              isInRange(day.date) && 'bg-stone-100',
-              isAdmin && !day.available && 'bg-red-50 text-red-400 border-red-100'
-            )}
+        {loading && (
+          <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-20 text-sm text-stone-400">
+            {lang === 'fr' ? 'Chargement...' : 'Loading...'}
+          </div>
+        )}
+
+        {/* Jours de semaine */}
+        {weekDays.map(d => (
+          <div
+            key={d}
+            className="h-10 flex items-center justify-center text-[10px] font-bold text-stone-400 uppercase"
           >
-            {day.day}
-            {!day.available && <span className="absolute w-4 h-[1px] bg-current rotate-45" />}
-          </button>
+            {d}
+          </div>
         ))}
+
+        {/* Cases vides début de mois */}
+        {Array(firstDay)
+          .fill(null)
+          .map((_, i) => (
+            <div key={`empty-${i}`} className="h-14 bg-stone-50/30" />
+          ))}
+
+        {/* Jours du mois */}
+        {calendar.map(day => {
+          const price = getPriceForDate(day.date);
+          const isCustom = customPrices[day.date] !== undefined;
+          const isCheckInOrOut = day.date === checkIn || day.date === checkOut;
+          const inRange = isInRange(day.date);
+
+          return (
+            <button
+              key={day.date}
+              onClick={() => handleDateClick(day)}
+              disabled={!isAdmin && !day.available}
+              className={cn(
+                'h-14 flex flex-col items-center justify-center gap-0.5 text-xs font-medium rounded-sm transition-all relative',
+                // Disponible
+                day.available &&
+                  !isCheckInOrOut &&
+                  !inRange &&
+                  'bg-white border border-stone-100 hover:border-stone-900',
+                // Indisponible
+                !day.available &&
+                  !isAdmin &&
+                  'bg-stone-100 text-stone-300 cursor-not-allowed',
+                // Sélectionné (check-in / check-out)
+                isCheckInOrOut && 'bg-stone-950 text-white z-10',
+                // Dans la plage
+                inRange && 'bg-stone-100',
+                // Mode admin : indisponible
+                isAdmin &&
+                  !day.available &&
+                  'bg-red-50 text-red-400 border border-red-100 cursor-pointer hover:bg-red-100',
+                // Mode admin : disponible
+                isAdmin &&
+                  day.available &&
+                  'cursor-pointer hover:bg-stone-50'
+              )}
+            >
+              {/* Numéro du jour */}
+              <span className="leading-none">{day.day}</span>
+
+              {/* Prix — affiché si disponible et pas en mode admin */}
+              {!isAdmin && day.available && (
+                <span
+                  className={cn(
+                    'text-[8px] font-mono leading-none transition-colors',
+                    isCheckInOrOut
+                      ? 'text-white/70'
+                      : inRange
+                      ? 'text-stone-500'
+                      : isCustom
+                      ? 'text-amber-500 font-bold'
+                      : 'text-stone-400'
+                  )}
+                >
+                  {price} DT
+                </span>
+              )}
+
+              {/* Barre indisponible */}
+              {!day.available && (
+                <span className="absolute w-4 h-[1px] bg-current rotate-45" />
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* ── Légende (mode visiteur uniquement) ── */}
+      {!isAdmin && (
+        <div className="mt-6 pt-4 border-t border-stone-100 flex flex-wrap gap-4 text-[10px] text-stone-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-white border border-stone-200 inline-block" />
+            {lang === 'fr' ? 'Disponible' : 'Available'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-stone-100 inline-block" />
+            {lang === 'fr' ? 'Indisponible' : 'Unavailable'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-stone-950 inline-block" />
+            {lang === 'fr' ? 'Sélectionné' : 'Selected'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-amber-500 font-bold">DT</span>
+            {lang === 'fr' ? 'Tarif spécial' : 'Special rate'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

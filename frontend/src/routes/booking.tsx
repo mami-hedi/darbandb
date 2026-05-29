@@ -12,7 +12,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { fr, enUS } from "date-fns/locale";
 import { format, startOfToday, startOfMonth, endOfMonth, addMonths, eachDayOfInterval } from "date-fns";
 import { DayPicker, DateRange, DayButtonProps, DayProps } from "react-day-picker"
-import "react-day-picker/dist/style.css";
+import "react-day-picker/src/style.css";
 
 export const Route = createFileRoute("/booking")({
   head: () => ({
