@@ -8,10 +8,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Mail, MapPin, Phone, Check, ExternalLink, Calendar as CalendarIcon, User, Globe, X, AlertTriangle, RefreshCw } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
-import { DayPicker, DateRange, DayProps } from "react-day-picker";
+
 import { fr, enUS } from "date-fns/locale";
 import { format, startOfToday, startOfMonth, endOfMonth, addMonths, eachDayOfInterval } from "date-fns";
-
+import { DayPicker, DateRange, DayButtonProps, DayProps } from "react-day-picker"
 import "react-day-picker/dist/style.css";
 
 export const Route = createFileRoute("/booking")({
@@ -421,42 +421,45 @@ function Booking() {
                           }
                         }}
                         components={{
-                          Day: (props: DayProps) => {
-                            const targetDate = props.date;
-                            if (!targetDate || isNaN(targetDate.getTime())) return <button {...props} />;
+  DayButton: (props: DayButtonProps) => {
+    const { day, modifiers, ...buttonProps } = props;
+    const targetDate = day.date;
 
-                            const datePrice = getPriceForDate(targetDate);
-                            const dateStr = format(targetDate, "yyyy-MM-dd");
-                            const isCustom = customPrices[dateStr] !== undefined;
+    if (!targetDate || isNaN(targetDate.getTime())) {
+      return <button {...buttonProps} />;
+    }
 
-                            // CORRECTION : Extraction via les modifiers natifs de react-day-picker pour une précision parfaite
-                            const isSelected = props.modifiers.selected || props.modifiers.range_middle;
-                            const isEdge = props.modifiers.range_start || props.modifiers.range_end;
-                            const isPast = targetDate < today;
+    const datePrice = getPriceForDate(targetDate);
+    const dateStr = format(targetDate, "yyyy-MM-dd");
+    const isCustom = customPrices[dateStr] !== undefined;
 
-                            return (
-                              <button
-                                {...props}
-                                className="rdp-button_reset rdp-day transition-all relative p-0 flex flex-col items-center justify-center border border-neutral-950/20 hover:bg-neutral-900 style-override"
-                                style={{ width: "100%", height: "54px" }}
-                                disabled={isPast}
-                              >
-                                <span className={`text-xs font-semibold ${isEdge ? "text-black" : isPast ? "text-neutral-700 line-through" : "text-white"}`}>
-                                  {targetDate.getDate()}
-                                </span>
-                                {!isPast && (
-                                  <span className={`text-[8px] mt-0.5 font-mono tracking-tighter ${
-                                    isEdge ? "text-black font-bold" : 
-                                    isSelected ? "text-neutral-400" :
-                                    isCustom ? "text-amber-400 font-bold" : "text-neutral-500"
-                                  }`}>
-                                    {datePrice} DT
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          }
-                        }}
+    const isSelected = modifiers.selected || modifiers.range_middle;
+    const isEdge = modifiers.range_start || modifiers.range_end;
+    const isPast = targetDate < today;
+
+    return (
+      <button
+        {...buttonProps}  // ✅ spread correct : contient déjà onClick, disabled, etc.
+        className="rdp-day_button transition-all relative p-0 flex flex-col items-center justify-center w-full border border-neutral-950/20 hover:bg-neutral-900"
+        style={{ height: "54px" }}
+        disabled={isPast || buttonProps.disabled}
+      >
+        <span className={`text-xs font-semibold ${isEdge ? "text-black" : isPast ? "text-neutral-700 line-through" : "text-white"}`}>
+          {targetDate.getDate()}
+        </span>
+        {!isPast && (
+          <span className={`text-[8px] mt-0.5 font-mono tracking-tighter ${
+            isEdge ? "text-black font-bold" :
+            isSelected ? "text-neutral-400" :
+            isCustom ? "text-amber-400 font-bold" : "text-neutral-500"
+          }`}>
+            {datePrice} DT
+          </span>
+        )}
+      </button>
+    );
+  }
+}}
                       />
                     </div>
                     </div>
