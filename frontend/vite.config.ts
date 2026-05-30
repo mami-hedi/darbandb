@@ -9,9 +9,7 @@ export default defineConfig({
     tsconfigPaths(),
     tailwindcss(),
     tanstackStart(),
-    cloudflare({
-      persistState: false,
-    }),
+    cloudflare(),
   ],
   server: {
     port: 8080,
