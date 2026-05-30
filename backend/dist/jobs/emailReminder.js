@@ -5,16 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startReminderJob = startReminderJob;
 const node_cron_1 = __importDefault(require("node-cron"));
-const sequelize_1 = require("sequelize"); // ← ajoute Sequelize
+const sequelize_1 = require("sequelize");
 const Reservation_1 = require("../models/Reservation");
 const emailService_1 = require("../services/emailService");
 const emailService = new emailService_1.EmailService();
 function startReminderJob(sequelize) {
-    // Tous les jours à 9h00
     node_cron_1.default.schedule('0 9 * * *', async () => {
         console.log('⏰ Running reminder email job...');
         try {
-            // Chercher les réservations dont l'arrivée est dans 48h
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             const dayAfter = new Date();
