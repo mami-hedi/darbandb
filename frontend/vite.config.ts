@@ -8,8 +8,10 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    cloudflare(),
     tanstackStart(),
+    cloudflare({
+      persistState: false,
+    }),
   ],
   server: {
     port: 8080,
