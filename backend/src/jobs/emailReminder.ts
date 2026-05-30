@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { Sequelize } from 'sequelize';
+import { Op, Sequelize } from 'sequelize'; // ← ajoute Sequelize
 import { Reservation } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 
@@ -21,7 +21,7 @@ export function startReminderJob(sequelize: Sequelize) {
       const reservations = await Reservation.findAll({
         where: {
           checkInDate: {
-            [Sequelize.Op.between]: [tomorrow, dayAfter],
+            [Op.between]: [tomorrow, dayAfter],
           },
           status: 'confirmed',
           reminderSent: false,

@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const rateRuleController_1 = require("../controllers/rateRuleController");
+const router = (0, express_1.Router)();
+const controller = new rateRuleController_1.RateRuleController();
+router.get('/', controller.getAll);
+router.post('/', controller.create);
+router.put('/:id', controller.update);
+router.delete('/:id', controller.delete);
+exports.default = router;

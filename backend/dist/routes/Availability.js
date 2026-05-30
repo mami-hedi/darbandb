@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const availabilityController_1 = require("../controllers/availabilityController");
+const router = (0, express_1.Router)();
+const controller = new availabilityController_1.AvailabilityController();
+// Obtenir le calendrier complet (utilisé par ton composant AvailabilityCalendar)
+router.get('/calendar', controller.getMonthCalendar);
+// Obtenir uniquement la liste des dates occupées
+router.get('/reserved', controller.getReservedDates);
+// Vérifier une plage spécifique
+router.get('/check', controller.checkDateRange);
+// Calculer le prix
+router.get('/price', controller.calculatePrice);
+exports.default = router;
