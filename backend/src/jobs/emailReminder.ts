@@ -1,20 +1,17 @@
 import cron from 'node-cron';
-import { Op, Sequelize } from 'sequelize'; // ← ajoute Sequelize
+import { Op, Sequelize } from 'sequelize';
 import { Reservation } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 
 const emailService = new EmailService();
 
 export function startReminderJob(sequelize: Sequelize) {
-  // Tous les jours à 9h00
   cron.schedule('0 9 * * *', async () => {
     console.log('⏰ Running reminder email job...');
-
     try {
-      // Chercher les réservations dont l'arrivée est dans 48h
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       const dayAfter = new Date();
       dayAfter.setDate(dayAfter.getDate() + 2);
 

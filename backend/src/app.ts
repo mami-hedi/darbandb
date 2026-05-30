@@ -4,15 +4,11 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { sequelize } from './config/database';
-
-// Import des modèles
 import { initReservationModel } from './models/Reservation';
 import { initBlogPostModel } from './models/blogModel';
 import { initAdminModel, Admin } from './models/Admin';
 import { initCustomPriceModel } from './models/CustomPrice';
 import { initRateRuleModel } from './models/RateRule';
-
-// Import des routes
 import availabilityRoutes from './routes/Availability';
 import reservationRoutes from './routes/reservations';
 import blogRoutes from './routes/blogRoutes';
@@ -22,11 +18,9 @@ import rateRulesRouter from './routes/rateRules';
 
 const app = express();
 
-// --- MIDDLEWARES DE SÉCURITÉ ---
 app.use(helmet());
 app.use(cookieParser());
 
-// CONFIGURATION CORS
 const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:8080';
 app.use(cors({
   origin: allowedOrigin,
@@ -38,14 +32,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- INITIALISATION DES MODÈLES ---
 initReservationModel(sequelize);
 initBlogPostModel(sequelize);
 initAdminModel(sequelize);
 initCustomPriceModel(sequelize);
 initRateRuleModel(sequelize);
 
-// --- DÉCLARATION DES ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/reservations', reservationRoutes);
@@ -53,7 +45,6 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/settings', priceRoutes);
 app.use('/api/rates', rateRulesRouter);
 
-// --- SEED ADMIN PAR DÉFAUT ---
 const seedAdmin = async () => {
   const adminCount = await Admin.count();
   if (adminCount === 0) {
@@ -65,17 +56,13 @@ const seedAdmin = async () => {
   }
 };
 
-// --- DÉMARRAGE SERVEUR ---
 export const startServer = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
-
     await sequelize.sync({ alter: true });
     console.log('✅ Modèles synchronisés');
-
     await seedAdmin();
-
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Serveur prêt sur le port ${PORT}`);
