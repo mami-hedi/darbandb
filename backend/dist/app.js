@@ -22,6 +22,11 @@ const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const priceRoutes_1 = __importDefault(require("./routes/priceRoutes"));
 const rateRules_1 = __importDefault(require("./routes/rateRules"));
 const app = (0, express_1.default)();
+app.use((req, res, next) => {
+    console.log(`[${req.method}] ${req.url}`);
+    next();
+});
+// ... vos app.use('/api/...')
 app.use((0, helmet_1.default)());
 app.use((0, cookie_parser_1.default)());
 const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:8080';

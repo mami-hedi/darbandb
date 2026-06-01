@@ -259,18 +259,18 @@ function Contact() {
 
             {/* LA CARTE EN FORMAT CARRÉ PERFECT */}
             <div className="w-full aspect-square overflow-hidden border border-neutral-800 shadow-2xl relative group">
-              <iframe
-                title="Carte Dar B&B"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2679.5964511206344!2d10.646715874933065!3d36.42130678896762!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13029f1a7e18f0a3%3A0x26c98417956920f1!2sDar%20B%26B!5e1!3m2!1sfr!2stn!4v1779715364207!5m2!1sfr!2stn"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={true}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="w-full h-full grayscale invert opacity-70 transition-all duration-700 group-hover:grayscale-0 group-hover:invert-0 group-hover:opacity-100"
-              />
-            </div>
+  <iframe
+    title="Carte Dar B&B"
+    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2679.5965991201792!2d10.6492908!3d36.421302499999996!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13029f1a7e18f0a3%3A0x26c98417956920f1!2sDar%20B%26B!5e1!3m2!1sfr!2stn!4v1780318631513!5m2!1sfr!2stn"
+    width="100%"
+    height="100%"
+    style={{ border: 0 }}
+    allowFullScreen
+    loading="lazy"
+    referrerPolicy="no-referrer-when-downgrade"
+    className="w-full h-full grayscale invert opacity-70 transition-all duration-700 group-hover:grayscale-0 group-hover:invert-0 group-hover:opacity-100"
+  />
+</div>
 
           </aside>
         </section>

@@ -82,7 +82,7 @@ function Booking() {
   setIsMounted(true);
 }, []);
 
-  const AIRBNB_URL = "https://www.airbnb.com/h/votre-villa-hammamet";
+  const AIRBNB_URL = "https://www.airbnb.fr/h/villabnb";
 
   // Récupération des tarifs depuis le backend avec correction de la désynchronisation
   const loadPricesForMonth = useCallback(async (month: Date) => {

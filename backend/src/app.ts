@@ -17,7 +17,12 @@ import priceRoutes from './routes/priceRoutes';
 import rateRulesRouter from './routes/rateRules';
 
 const app = express();
+app.use((req, res, next) => {
+  console.log(`[${req.method}] ${req.url}`);
+  next();
+});
 
+// ... vos app.use('/api/...')
 app.use(helmet());
 app.use(cookieParser());
 
