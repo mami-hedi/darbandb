@@ -4,14 +4,9 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { AdminAuthProvider } from "@/admin/AdminAuth";
-
-// 1. On récupère la vraie URL finale générée par Vite (avec le suffixe ?url)
-import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
@@ -38,7 +33,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -46,20 +40,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           Une erreur est survenue
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Nous n'avons pas pu charger cette page. Vous pouvez essayer de rafraîchir ou revenir à l'accueil.
+          Nous n'avons pas pu charger cette page.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
+            onClick={() => { router.invalidate(); reset(); }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Réessayer
           </button>
-          <a
-            href="/"
+          <a href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Retour à l'accueil
@@ -71,49 +61,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dar B&B | Votre séjour d'exception" },
-      { name: "description", content: "Bienvenue chez Dar B&B, votre maison d'hôtes chaleureuse et authentique." },
-      { name: "author", content: "Dar B&B" },
-      { property: "og:title", content: "Dar B&B" },
-      { property: "og:description", content: "Réservez votre séjour dans notre magnifique Bed & Breakfast." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-    // 2. On injecte proprement la variable appCss définie plus haut !
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="fr">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
