@@ -26,9 +26,23 @@ app.use((req, res, next) => {
 app.use(helmet());
 app.use(cookieParser());
 
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:8080';
+const allowedOrigins = [
+  'http://localhost:8080', 
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean) as string[]; // Filtre les valeurs undefined
+
 app.use(cors({
-  origin: allowedOrigin,
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origine (comme les appels mobile ou outils de test)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS Policy: Origin not allowed'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
