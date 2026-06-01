@@ -50,13 +50,13 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
   const [loadingPrices, setLoadingPrices] = useState(false);
 
   // ─── Fetch disponibilités ───────────────────────────────────────────────────
-  const fetchCalendar = useCallback(async () => {
+  const fetchCalendar = useCallback(async (month: Date) => {
     setLoading(true);
     try {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
+      const year = month.getFullYear();
+      const monthNum = month.getMonth() + 1;
       const response = await fetch(
-        `${API_BASE}/availability/calendar?year=${year}&month=${month}`
+        `${API_BASE}/availability/calendar?year=${year}&month=${monthNum}`
       );
       const data = await response.json();
       setCalendar(data.data || []);
@@ -65,11 +65,12 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
     } finally {
       setLoading(false);
     }
-  }, [currentDate, API_BASE, lang]);
+  }, [API_BASE, lang]);
 
   // ─── Fetch tarifs dynamiques ────────────────────────────────────────────────
   const fetchPrices = useCallback(async (month: Date) => {
     setLoadingPrices(true);
+    setCustomPrices({});
     try {
       const start = format(startOfMonth(month), 'yyyy-MM-dd');
       const end = format(endOfMonth(addMonths(month, 1)), 'yyyy-MM-dd');
@@ -88,22 +89,22 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
     }
   }, [API_BASE]);
 
-  // Déclencher les deux fetches au changement de mois
+  // ─── Déclenchement unique sur changement de mois ────────────────────────────
   useEffect(() => {
-    fetchCalendar();
+    fetchCalendar(currentDate);
     fetchPrices(currentDate);
-  }, [fetchCalendar, fetchPrices, currentDate]);
+  }, [currentDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Utilitaire prix ────────────────────────────────────────────────────────
-  const getPriceForDate = (dateStr: string): number => {
+  const getPriceForDate = useCallback((dateStr: string): number => {
     return customPrices[dateStr] !== undefined ? customPrices[dateStr] : basePrice;
-  };
+  }, [customPrices, basePrice]);
 
   // ─── Navigation mois ────────────────────────────────────────────────────────
   const goToPrevMonth = () =>
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1));
   const goToNextMonth = () =>
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1));
 
   // ─── Redirection vers /booking ──────────────────────────────────────────────
   const handleRedirectToContact = () => {
@@ -117,9 +118,9 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
   // ─── Admin : toggle disponibilité ──────────────────────────────────────────
   const toggleAvailability = async (day: CalendarDay) => {
     const oldCalendar = [...calendar];
-    setCalendar(calendar.map(d =>
-      d.date === day.date ? { ...d, available: !d.available } : d
-    ));
+    setCalendar(prev =>
+      prev.map(d => d.date === day.date ? { ...d, available: !d.available } : d)
+    );
     try {
       const response = await fetch(`${API_BASE}/availability/toggle`, {
         method: 'POST',
@@ -134,30 +135,48 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
     }
   };
 
-  // ─── Clic sur une date ──────────────────────────────────────────────────────
-  const handleDateClick = async (day: CalendarDay) => {
+  // ─── Clic sur une date — calcul 100% local avec customPrices ───────────────
+  const handleDateClick = (day: CalendarDay) => {
     if (isAdmin) return toggleAvailability(day);
     if (!day.available) return;
 
     if (!checkIn || (checkIn && checkOut)) {
+      // Première sélection ou reset : on choisit le check-in
       setCheckIn(day.date);
       setCheckOut(null);
       setPriceInfo(null);
     } else {
+      // Deuxième sélection : check-out
       if (new Date(day.date) <= new Date(checkIn)) {
+        // Si la date cliquée est avant le check-in, on reset et repart
         setCheckIn(day.date);
+        setCheckOut(null);
+        setPriceInfo(null);
         return;
       }
+
       setCheckOut(day.date);
-      try {
-        const res = await fetch(
-          `${API_BASE}/availability/price?checkIn=${checkIn}&checkOut=${day.date}`
-        );
-        const data = await res.json();
-        if (data.success) setPriceInfo(data.data);
-      } catch (err) {
-        console.error('Erreur prix:', err);
+
+      // ✅ Calcul du total entièrement en local avec les customPrices chargés
+      const start = new Date(checkIn);
+      const end = new Date(day.date);
+      const nights: { date: string; price: number }[] = [];
+
+      const cursor = new Date(start);
+      while (cursor < end) {
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        nights.push({ date: dateStr, price: getPriceForDate(dateStr) });
+        cursor.setDate(cursor.getDate() + 1);
       }
+
+      const totalPrice = nights.reduce((sum, n) => sum + n.price, 0);
+      const nightCount = nights.length;
+
+      setPriceInfo({
+        nights: nightCount,
+        pricePerNight: nightCount > 0 ? Math.round(totalPrice / nightCount) : basePrice,
+        totalPrice,
+      });
     }
   };
 
@@ -214,7 +233,9 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
             <span className="text-xl font-bold">{priceInfo.totalPrice} DT</span>
           </div>
           <p className="text-[10px] text-stone-400 mb-4">
-            {lang === 'fr' ? 'Tarif calculé selon les prix en vigueur' : 'Price calculated based on current rates'}
+            {lang === 'fr'
+              ? 'Tarif calculé selon les prix en vigueur'
+              : 'Price calculated based on current rates'}
           </p>
           <button
             onClick={handleRedirectToContact}
@@ -290,51 +311,35 @@ export function AvailabilityCalendar({ isAdmin = false, onUpdate }: Availability
               disabled={!isAdmin && !day.available}
               className={cn(
                 'h-14 flex flex-col items-center justify-center gap-0.5 text-xs font-medium rounded-sm transition-all relative',
-                // Disponible
-                day.available &&
-                  !isCheckInOrOut &&
-                  !inRange &&
+                day.available && !isCheckInOrOut && !inRange &&
                   'bg-white border border-stone-100 hover:border-stone-900',
-                // Indisponible
-                !day.available &&
-                  !isAdmin &&
+                !day.available && !isAdmin &&
                   'bg-stone-100 text-stone-300 cursor-not-allowed',
-                // Sélectionné (check-in / check-out)
                 isCheckInOrOut && 'bg-stone-950 text-white z-10',
-                // Dans la plage
                 inRange && 'bg-stone-100',
-                // Mode admin : indisponible
-                isAdmin &&
-                  !day.available &&
+                isAdmin && !day.available &&
                   'bg-red-50 text-red-400 border border-red-100 cursor-pointer hover:bg-red-100',
-                // Mode admin : disponible
-                isAdmin &&
-                  day.available &&
+                isAdmin && day.available &&
                   'cursor-pointer hover:bg-stone-50'
               )}
             >
-              {/* Numéro du jour */}
               <span className="leading-none">{day.day}</span>
 
-              {/* Prix — affiché si disponible et pas en mode admin */}
+              {/* Prix dynamique */}
               {!isAdmin && day.available && (
                 <span
                   className={cn(
                     'text-[8px] font-mono leading-none transition-colors',
-                    isCheckInOrOut
-                      ? 'text-white/70'
-                      : inRange
-                      ? 'text-stone-500'
-                      : isCustom
-                      ? 'text-amber-500 font-bold'
-                      : 'text-stone-400'
+                    isCheckInOrOut  ? 'text-white/70'         :
+                    inRange         ? 'text-stone-500'        :
+                    isCustom        ? 'text-amber-500 font-bold' :
+                                      'text-stone-400'
                   )}
                 >
                   {price} DT
                 </span>
               )}
 
-              {/* Barre indisponible */}
               {!day.available && (
                 <span className="absolute w-4 h-[1px] bg-current rotate-45" />
               )}
