@@ -12,34 +12,70 @@ const initBlogPostModel = (sequelize) => {
         date: {
             type: sequelize_1.DataTypes.STRING(50),
             allowNull: false,
-            defaultValue: () => new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+            defaultValue: () => new Date().toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+            }),
         },
-        // Gestion sécurisée du JSON pour MySQL
         title: {
             type: sequelize_1.DataTypes.JSON,
             allowNull: false,
-            get() { return JSON.parse(JSON.stringify(this.getDataValue('title') || { fr: '', en: '' })); }
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('title') || { fr: '', en: '' }));
+            },
         },
         excerpt: {
             type: sequelize_1.DataTypes.JSON,
             allowNull: false,
-            get() { return JSON.parse(JSON.stringify(this.getDataValue('excerpt') || { fr: '', en: '' })); }
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('excerpt') || { fr: '', en: '' }));
+            },
         },
         body: {
             type: sequelize_1.DataTypes.JSON,
             allowNull: false,
-            get() { return JSON.parse(JSON.stringify(this.getDataValue('body') || { fr: '', en: '' })); }
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('body') || { fr: '', en: '' }));
+            },
         },
         category: {
             type: sequelize_1.DataTypes.JSON,
             allowNull: false,
-            get() { return JSON.parse(JSON.stringify(this.getDataValue('category') || { fr: 'Inspiration', en: 'Inspiration' })); }
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('category') || { fr: 'Inspiration', en: 'Inspiration' }));
+            },
         },
         cover: { type: sequelize_1.DataTypes.STRING(500), allowNull: false },
         status: {
             type: sequelize_1.DataTypes.ENUM('draft', 'published', 'archived'),
             defaultValue: 'published',
-            allowNull: false
+            allowNull: false,
+        },
+        // ── Nouveaux champs SEO ──
+        metaTitle: {
+            type: sequelize_1.DataTypes.JSON,
+            allowNull: true,
+            defaultValue: { fr: '', en: '' },
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('metaTitle') || { fr: '', en: '' }));
+            },
+        },
+        metaDescription: {
+            type: sequelize_1.DataTypes.JSON,
+            allowNull: true,
+            defaultValue: { fr: '', en: '' },
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('metaDescription') || { fr: '', en: '' }));
+            },
+        },
+        imageAlt: {
+            type: sequelize_1.DataTypes.JSON,
+            allowNull: true,
+            defaultValue: { fr: '', en: '' },
+            get() {
+                return JSON.parse(JSON.stringify(this.getDataValue('imageAlt') || { fr: '', en: '' }));
+            },
         },
     }, {
         sequelize,
