@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { DayPicker } from "react-day-picker";
 import { fr } from "date-fns/locale";
@@ -46,12 +46,15 @@ const [showMobileList, setShowMobileList] = useState(false);
   const { basePrice, customPrices, getPriceForDate, loading, refetch } = useDailyPrices(displayMonth);
 
   // Initialiser les inputs avec les valeurs récupérées
-  useEffect(() => {
-    if (selectedDay) {
-      const price = getPriceForDate(selectedDay);
-      setInputPrice(price.toString());
-    }
-  }, [selectedDay, getPriceForDate]);
+  const prevDayRef = useRef<Date | undefined>(undefined);
+
+useEffect(() => {
+  if (selectedDay && selectedDay !== prevDayRef.current) {
+    prevDayRef.current = selectedDay;
+    const price = getPriceForDate(selectedDay);
+    setInputPrice(price.toString());
+  }
+}, [selectedDay]); // ← retirer getPriceForDate des dépendances
 
   // Initialiser le prix de base
   useEffect(() => {
