@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { DayPicker } from "react-day-picker";
 import { fr } from "date-fns/locale";
-import { format, startOfMonth, endOfMonth, addMonths, eachDayOfInterval } from "date-fns";
+import { format } from "date-fns";
 import { useDailyPrices } from "../hooks/useDailyPrices";
 import { parseApiPrice } from "../utils/dateHelper";
 import { Calendar, Save, Trash2, DollarSign, AlertCircle, CheckCircle, Loader } from "lucide-react";
@@ -25,18 +25,23 @@ function AdminTarifs() {
   const [basePriceInput, setBasePriceInput] = useState<string>("");
   const [editingBasePrice, setEditingBasePrice] = useState(false);
 
-  // État de chargement et messages
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [notification, setNotification] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
+  // États de gestion des opérations
+const [isSaving, setIsSaving] = useState(false);
+const [isDeleting, setIsDeleting] = useState(false);
 
-  // État pour affichage des tarifs customisés
-  const [pricesList, setPricesList] = useState<PriceEntry[]>([]);
-  const [sortBy, setSortBy] = useState<"date" | "price">("date");
+// État des notifications
+const [notification, setNotification] = useState<{
+  type: "success" | "error" | "info";
+  message: string;
+} | null>(null);
 
+// États pour les tarifs et tri
+const [pricesList, setPricesList] = useState<PriceEntry[]>([]);
+const [sortBy, setSortBy] = useState<"date" | "price">("date");
+
+// Nouvel état pour basculer la vue sur mobile
+const [showMobileList, setShowMobileList] = useState(false);
+  
   // Hook pour récupérer les prix
   const { basePrice, customPrices, getPriceForDate, loading, refetch } = useDailyPrices(displayMonth);
 
@@ -46,7 +51,7 @@ function AdminTarifs() {
       const price = getPriceForDate(selectedDay);
       setInputPrice(price.toString());
     }
-  }, [selectedDay]);
+  }, [selectedDay, getPriceForDate]);
 
   // Initialiser le prix de base
   useEffect(() => {
@@ -172,25 +177,25 @@ function AdminTarifs() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans">
-      {/* En-tête */}
+      {/* En-tête - Responsive */}
       <div className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-3 mb-2">
-            <DollarSign className="h-6 w-6 text-amber-400" />
-            <h1 className="text-3xl font-bold tracking-tight">Gestion des Tarifs</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex items-center gap-3 mb-1 sm:mb-2">
+            <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-amber-400 flex-shrink-0" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Gestion des Tarifs</h1>
           </div>
-          <p className="text-sm text-neutral-400">Gérez le prix de base et les tarifs customisés par date</p>
+          <p className="text-xs sm:text-sm text-neutral-400">Gérez le prix de base et les tarifs customisés par date</p>
         </div>
       </div>
 
-      {/* Notification */}
+      {/* Notification - Responsive (centrée sur mobile, droite sur desktop) */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm animate-in fade-in slide-in-from-top-2 ${
+        <div className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-50 flex items-center gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm animate-in fade-in slide-in-from-top-2 ${
           notification.type === "success"
-            ? "bg-emerald-950/80 border-emerald-800 text-emerald-200"
+            ? "bg-emerald-950/90 border-emerald-800 text-emerald-200"
             : notification.type === "error"
-            ? "bg-red-950/80 border-red-800 text-red-200"
-            : "bg-blue-950/80 border-blue-800 text-blue-200"
+            ? "bg-red-950/90 border-red-800 text-red-200"
+            : "bg-blue-950/90 border-blue-800 text-blue-200"
         }`}>
           {notification.type === "success" && <CheckCircle className="h-5 w-5 flex-shrink-0" />}
           {notification.type === "error" && <AlertCircle className="h-5 w-5 flex-shrink-0" />}
@@ -198,19 +203,17 @@ function AdminTarifs() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* PRIX DE BASE */}
-        <div className="mb-8">
-          <div className="border border-neutral-800 rounded-lg p-6 bg-neutral-900/30 hover:bg-neutral-900/50 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-white mb-1">Prix de Base</h2>
-                <p className="text-sm text-neutral-400">Tarif appliqué par défaut quand aucun prix customisé n'existe</p>
-              </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        {/* PRIX DE BASE - Responsive */}
+        <div className="mb-6 sm:mb-8">
+          <div className="border border-neutral-800 rounded-lg p-4 sm:p-6 bg-neutral-900/30 hover:bg-neutral-900/50 transition-colors">
+            <div className="mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-bold text-white mb-1">Prix de Base</h2>
+              <p className="text-xs sm:text-sm text-neutral-400">Tarif appliqué par défaut quand aucun prix customisé n'existe</p>
             </div>
 
             {editingBasePrice ? (
-              <div className="flex gap-3 items-end">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-300 mb-2">Prix (DT)</label>
                   <input
@@ -219,34 +222,37 @@ function AdminTarifs() {
                     min="0"
                     value={basePriceInput}
                     onChange={(e) => setBasePriceInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 font-mono text-lg"
+                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 font-mono text-base sm:text-lg"
                     autoFocus
                   />
                 </div>
-                <button
-                  onClick={handleSaveBasePrice}
-                  disabled={isSaving}
-                  className="px-6 py-3 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Enregistrer
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingBasePrice(false);
-                    setBasePriceInput(basePrice.toString());
-                  }}
-                  className="px-4 py-3 bg-neutral-800 text-neutral-200 font-semibold rounded-lg hover:bg-neutral-700 transition-colors"
-                >
-                  Annuler
-                </button>
+                <div className="flex gap-2 sm:gap-3">
+                  <button
+                    onClick={handleSaveBasePrice}
+                    disabled={isSaving}
+                    className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-h-[48px]"
+                  >
+                    {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    <span className="hidden sm:inline">Enregistrer</span>
+                    <span className="sm:hidden">OK</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingBasePrice(false);
+                      setBasePriceInput(basePrice.toString());
+                    }}
+                    className="px-4 py-3 bg-neutral-800 text-neutral-200 font-semibold rounded-lg hover:bg-neutral-700 transition-colors min-h-[48px]"
+                  >
+                    Annuler
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <div className="text-4xl font-bold font-mono text-amber-400">{basePrice.toFixed(2)} DT</div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="text-3xl sm:text-4xl font-bold font-mono text-amber-400">{basePrice.toFixed(2)} DT</div>
                 <button
                   onClick={() => setEditingBasePrice(true)}
-                  className="px-6 py-3 bg-neutral-800 text-white font-semibold rounded-lg hover:bg-neutral-700 transition-colors"
+                  className="w-full sm:w-auto px-6 py-3 bg-neutral-800 text-white font-semibold rounded-lg hover:bg-neutral-700 transition-colors min-h-[48px]"
                 >
                   Modifier
                 </button>
@@ -257,31 +263,38 @@ function AdminTarifs() {
 
         {/* CONTENU PRINCIPAL */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-12 sm:py-20">
             <div className="text-center">
               <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-amber-400" />
-              <p className="text-neutral-400">Chargement des données...</p>
+              <p className="text-neutral-400 text-sm sm:text-base">Chargement des données...</p>
             </div>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-8">
             {/* CALENDRIER ET FORMULAIRE */}
             <div className="lg:col-span-1">
-              <div className="border border-neutral-800 rounded-lg p-6 bg-neutral-900/30 sticky top-24">
-                <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-amber-400" />
-                  Sélectionner une Date
+              <div className="border border-neutral-800 rounded-lg p-4 sm:p-6 bg-neutral-900/30 lg:sticky lg:top-24">
+                <h2 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                  <span className="truncate">Sélectionner une Date</span>
                 </h2>
 
-                {/* Calendrier */}
-                <div className="mb-6 overflow-x-auto">
+                {/* Calendrier - Responsive */}
+                <div className="mb-4 sm:mb-6 flex justify-center">
                   <style>{`
                     .admin-calendar .rdp {
-                      --rdp-cell-size: 40px;
+                      --rdp-cell-size: 36px;
                       --rdp-accent-color: #fbbf24;
                       --rdp-background-color: #fbbf2408;
                       color: #fff;
                       font-size: 12px;
+                      margin: 0;
+                    }
+                    @media (min-width: 640px) {
+                      .admin-calendar .rdp {
+                        --rdp-cell-size: 40px;
+                        font-size: 14px;
+                      }
                     }
                     .admin-calendar .rdp-caption {
                       padding: 0.5rem 0;
@@ -289,12 +302,22 @@ function AdminTarifs() {
                     .admin-calendar .rdp-caption_label {
                       font-weight: 600;
                       color: #fff;
-                      font-size: 14px;
+                      font-size: 13px;
+                    }
+                    @media (min-width: 640px) {
+                      .admin-calendar .rdp-caption_label {
+                        font-size: 14px;
+                      }
                     }
                     .admin-calendar .rdp-head_cell {
                       color: #a3a3a3;
                       font-weight: 500;
-                      font-size: 11px;
+                      font-size: 10px;
+                    }
+                    @media (min-width: 640px) {
+                      .admin-calendar .rdp-head_cell {
+                        font-size: 11px;
+                      }
                     }
                     .admin-calendar .rdp-button_reset {
                       color: #fff;
@@ -312,6 +335,16 @@ function AdminTarifs() {
                       color: #fbbf24;
                       font-weight: 600;
                     }
+                    .admin-calendar .rdp-nav_button {
+                      width: 28px;
+                      height: 28px;
+                    }
+                    @media (min-width: 640px) {
+                      .admin-calendar .rdp-nav_button {
+                        width: 32px;
+                        height: 32px;
+                      }
+                    }
                   `}</style>
                   <DayPicker
                     mode="single"
@@ -324,21 +357,21 @@ function AdminTarifs() {
                   />
                 </div>
 
-                {/* Infos date sélectionnée */}
+                {/* Infos date sélectionnée - Compact sur mobile */}
                 {selectedDay && (
-                  <div className="mb-6 p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
                     <p className="text-xs text-neutral-400 mb-1">Date sélectionnée</p>
-                    <p className="text-lg font-bold text-amber-400">
+                    <p className="text-base sm:text-lg font-bold text-amber-400 truncate">
                       {format(selectedDay, "EEEE dd MMMM yyyy", { locale: fr })}
                     </p>
-                    <p className="text-sm text-neutral-400 mt-2">
+                    <p className="text-xs sm:text-sm text-neutral-400 mt-1 sm:mt-2">
                       Format API: <code className="text-xs font-mono text-neutral-300">{format(selectedDay, "yyyy-MM-dd")}</code>
                     </p>
                   </div>
                 )}
 
-                {/* Formulaire prix */}
-                <form onSubmit={handleSavePrice} className="space-y-4">
+                {/* Formulaire prix - Responsive */}
+                <form onSubmit={handleSavePrice} className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-neutral-300 mb-2">Prix en Dinars (DT)</label>
                     <input
@@ -347,7 +380,7 @@ function AdminTarifs() {
                       min="0"
                       value={inputPrice}
                       onChange={(e) => setInputPrice(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 font-mono text-lg"
+                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 font-mono text-base sm:text-lg min-h-[48px]"
                       required
                       disabled={!selectedDay || isSaving}
                     />
@@ -356,33 +389,42 @@ function AdminTarifs() {
                   <button
                     type="submit"
                     disabled={!selectedDay || isSaving}
-                    className="w-full px-4 py-3 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-4 py-3 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-h-[48px]"
                   >
                     {isSaving ? (
                       <>
                         <Loader className="h-4 w-4 animate-spin" />
-                        Enregistrement...
+                        <span className="text-sm sm:text-base">Enregistrement...</span>
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4" />
-                        Enregistrer le tarif
+                        <span className="text-sm sm:text-base">Enregistrer le tarif</span>
                       </>
                     )}
                   </button>
                 </form>
+
+                {/* Bouton mobile pour voir la liste */}
+                <button
+                  onClick={() => setShowMobileList(!showMobileList)}
+                  className="lg:hidden w-full mt-4 px-4 py-3 bg-neutral-800 text-white font-semibold rounded-lg hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2 min-h-[48px]"
+                >
+                  <Calendar className="h-4 w-4" />
+                  {showMobileList ? "Masquer les tarifs" : `Voir les tarifs (${pricesList.length})`}
+                </button>
               </div>
             </div>
 
-            {/* TABLEAU TARIFS CUSTOMISÉS */}
-            <div className="lg:col-span-2">
-              <div className="border border-neutral-800 rounded-lg p-6 bg-neutral-900/30">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-bold">Tarifs Customisés</h2>
-                  <div className="flex gap-2">
+            {/* TABLEAU TARIFS CUSTOMISÉS - Transformé en cartes sur mobile */}
+            <div className={`lg:col-span-2 ${showMobileList ? 'block' : 'hidden lg:block'}`}>
+              <div className="border border-neutral-800 rounded-lg p-4 sm:p-6 bg-neutral-900/30">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+                  <h2 className="text-base sm:text-lg font-bold">Tarifs Customisés</h2>
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => setSortBy("date")}
-                      className={`text-xs px-3 py-1 rounded transition-colors ${
+                      className={`flex-1 sm:flex-none text-xs px-3 py-2 rounded transition-colors min-h-[36px] ${
                         sortBy === "date"
                           ? "bg-amber-500 text-black font-semibold"
                           : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
@@ -392,7 +434,7 @@ function AdminTarifs() {
                     </button>
                     <button
                       onClick={() => setSortBy("price")}
-                      className={`text-xs px-3 py-1 rounded transition-colors ${
+                      className={`flex-1 sm:flex-none text-xs px-3 py-2 rounded transition-colors min-h-[36px] ${
                         sortBy === "price"
                           ? "bg-amber-500 text-black font-semibold"
                           : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
@@ -404,30 +446,30 @@ function AdminTarifs() {
                 </div>
 
                 {pricesList.length === 0 ? (
-                  <div className="text-center py-12">
-                    <DollarSign className="h-12 w-12 text-neutral-700 mx-auto mb-4" />
-                    <p className="text-neutral-400">Aucun tarif customisé</p>
-                    <p className="text-sm text-neutral-500 mt-2">Sélectionnez une date et définissez un tarif pour l'ajouter</p>
+                  <div className="text-center py-8 sm:py-12">
+                    <DollarSign className="h-10 w-10 sm:h-12 sm:w-12 text-neutral-700 mx-auto mb-4" />
+                    <p className="text-neutral-400 text-sm sm:text-base">Aucun tarif customisé</p>
+                    <p className="text-xs sm:text-sm text-neutral-500 mt-2">Sélectionnez une date et définissez un tarif pour l'ajouter</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar">
                     {pricesList.map((entry) => (
                       <div
                         key={entry.date}
-                        className="flex items-center justify-between p-4 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg border border-neutral-700/50 hover:border-neutral-600 transition-all group"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg border border-neutral-700/50 hover:border-neutral-600 transition-all gap-3 sm:gap-0"
                       >
-                        <div>
+                        <div className="w-full sm:w-auto">
                           <p className="text-sm font-semibold text-white">
                             {format(new Date(entry.date), "dd MMMM yyyy", { locale: fr })}
                           </p>
                           <p className="text-xs text-neutral-400 font-mono">{entry.date}</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
                           <p className="text-lg font-bold font-mono text-amber-400">{entry.price.toFixed(2)} DT</p>
                           <button
                             onClick={() => handleDeletePrice(entry.date)}
                             disabled={isDeleting}
-                            className="p-2 text-neutral-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                            className="p-2 text-neutral-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Supprimer ce tarif"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -438,20 +480,20 @@ function AdminTarifs() {
                   </div>
                 )}
 
-                {/* Statistiques */}
+                {/* Statistiques - Responsive grid */}
                 {pricesList.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-neutral-700 grid grid-cols-3 gap-4">
+                  <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-neutral-700 grid grid-cols-3 gap-2 sm:gap-4">
                     <div className="text-center">
-                      <p className="text-xs text-neutral-400 mb-1">Tarifs customisés</p>
-                      <p className="text-2xl font-bold text-white">{pricesList.length}</p>
+                      <p className="text-xs text-neutral-400 mb-1">Tarifs</p>
+                      <p className="text-xl sm:text-2xl font-bold text-white">{pricesList.length}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-neutral-400 mb-1">Prix min</p>
-                      <p className="text-2xl font-bold text-emerald-400">{Math.min(...pricesList.map(p => p.price)).toFixed(2)} DT</p>
+                      <p className="text-xl sm:text-2xl font-bold text-emerald-400">{Math.min(...pricesList.map(p => p.price)).toFixed(2)} DT</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-neutral-400 mb-1">Prix max</p>
-                      <p className="text-2xl font-bold text-red-400">{Math.max(...pricesList.map(p => p.price)).toFixed(2)} DT</p>
+                      <p className="text-xl sm:text-2xl font-bold text-red-400">{Math.max(...pricesList.map(p => p.price)).toFixed(2)} DT</p>
                     </div>
                   </div>
                 )}
@@ -461,10 +503,15 @@ function AdminTarifs() {
         )}
       </div>
 
-      {/* Custom scrollbar styles */}
+      {/* Custom scrollbar styles + Responsive utilities */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
+        }
+        @media (min-width: 640px) {
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: rgba(255, 255, 255, 0.05);
@@ -476,6 +523,13 @@ function AdminTarifs() {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Empêcher le zoom sur input sur iOS */
+        @media screen and (max-width: 640px) {
+          input, select, textarea {
+            font-size: 16px;
+          }
         }
       `}</style>
     </div>

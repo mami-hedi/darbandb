@@ -6,8 +6,8 @@ import { LangSwitch } from "./LangSwitch";
 import { cn } from "@/lib/utils";
 
 // Importation des logos depuis assets
-import logoBlanc from "@/assets/LogoB_BBlanc.png";
-import logoNoir from "@/assets/LogoB_B-noir.png";
+import logoBlanc from "@/assets/logoBndBWhite.png";
+import logoNoir from "@/assets/logoBnBblack.png";
 
 export function Header() {
   const { t } = useLang();
@@ -46,14 +46,17 @@ export function Header() {
             : "bg-background border-b border-border"
       )}
     >
-      <div className="container-luxe flex items-center justify-between h-20">
+      <div className="container-luxe px-4 sm:px-6 flex items-center justify-between h-20">
         {/* Zone du Logo */}
         <Link to="/" className="flex items-center gap-3">
           <img 
-            src={onDark ? logoBlanc : logoNoir} 
-            alt="B&B Hammamet Oasis" 
-            className="h-20 w-auto transition-all duration-500"
-          />
+  src={onDark ? logoBlanc : logoNoir} 
+  alt="B&B Hammamet Oasis" 
+  // h-14 sur mobile (inchangé)
+  // sm:py-2.5 ajoute de l'espace haut/bas sur ordinateur
+  // sm:h-auto limite la hauteur pour laisser place au padding
+  className="h-14 sm:h-16 sm:py-2.5 w-auto transition-all duration-500 object-contain"
+/>
           <span className={cn(
             "hidden sm:inline text-[10px] tracking-[0.4em] uppercase transition-colors duration-500",
             onDark ? "text-white/80" : "text-foreground/80"
