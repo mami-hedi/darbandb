@@ -6,7 +6,7 @@ import { BlogPost } from '../models/blogModel';
 
 const router = Router();
 
-// ── Configuration Multer ──────────────────────────────────────────────────────
+// ── Configuation Multer ──────────────────────────────────────────────────────
 // Dossier de destination : src/assets/blogImages (créé automatiquement)
 const uploadDir = path.join(__dirname, '..', 'assets', 'blogImages');
 if (!fs.existsSync(uploadDir)) {
