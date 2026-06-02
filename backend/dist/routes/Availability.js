@@ -12,4 +12,8 @@ router.get('/reserved', controller.getReservedDates);
 router.get('/check', controller.checkDateRange);
 // Calculer le prix
 router.get('/price', controller.calculatePrice);
+// Route pour GET /api/availability/blocks
+router.get('/blocks', controller.getManualBlocks);
+// Route pour POST /api/availability/toggle (déjà utilisée par votre frontend)
+router.post('/toggle', controller.toggleBlock);
 exports.default = router;
