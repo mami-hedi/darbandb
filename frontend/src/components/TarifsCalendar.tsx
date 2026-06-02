@@ -9,7 +9,7 @@ const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5
 type CustomPriceMap = Record<string, number>;
 
 export function TarifsCalendar() {
-  const [basePrice, setBasePrice]       = useState<number>(150);
+  const [basePrice, setBasePrice]       = useState<number>(1500);
   const [customPrices, setCustomPrices] = useState<CustomPriceMap>({});
   const [selectedDay, setSelectedDay]   = useState<Date | undefined>(new Date());
   const [inputPrice, setInputPrice]     = useState<string>("");

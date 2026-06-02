@@ -18,7 +18,7 @@ export function Footer() {
             <img 
               src={logoNoir} 
               alt="Dar B&B" 
-              className="h-10 w-auto object-contain"
+              className="h-16 sm:h-12 md:h-10 w-auto object-contain"
             />
           </div>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground leading-relaxed">

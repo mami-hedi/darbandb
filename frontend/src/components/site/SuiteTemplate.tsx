@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Link, useNavigate } from "@tanstack/react-router"; // Ajout de useNavigate
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Calendar } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
@@ -12,22 +12,20 @@ interface SuiteTemplateProps {
   galleryImages: string[];
 }
 
-// Ordre des suites pour la navigation
 const SUITES_ORDER: SuiteIdType[] = ["suite-azur", "suite-olive", "suite-jasmin", "suite-ambre"];
 
 export function SuiteTemplate({ suiteId, mainImage, galleryImages }: SuiteTemplateProps) {
   const { t, lang } = useLang();
   const navigate = useNavigate();
 
-  // Récupération des données selon la suite actuelle (portée par l'URL/Props)
   const suiteDetails = t.suites.details?.[suiteId];
-
   if (!suiteDetails) return null;
 
   const labelRetour = lang === "en" ? "Retour aux Suites" : "Retour aux Suites";
   const labelReserver = lang === "en" ? "Book now" : "Réserver";
+  const labelPrecedent = lang === "en" ? "Previous" : "Précédent";
+  const labelSuivant = lang === "en" ? "Next" : "Suivant";
 
-  // Calcul des identifiants précédent et suivant
   const currentIndex = SUITES_ORDER.indexOf(suiteId);
   const prevIndex = currentIndex === 0 ? SUITES_ORDER.length - 1 : currentIndex - 1;
   const nextIndex = currentIndex === SUITES_ORDER.length - 1 ? 0 : currentIndex + 1;
@@ -35,10 +33,9 @@ export function SuiteTemplate({ suiteId, mainImage, galleryImages }: SuiteTempla
   const prevSuiteId = SUITES_ORDER[prevIndex];
   const nextSuiteId = SUITES_ORDER[nextIndex];
 
-  // Fonction de navigation qui met à jour l'URL réelle de TanStack Router
   const handleNavigate = (targetId: SuiteIdType) => {
     navigate({
-      to: "/suites/$suiteId", // Ajustez ce chemin selon votre configuration de route réelle
+      to: "/suites/$suiteId",
       params: { suiteId: targetId },
     });
   };
@@ -59,30 +56,29 @@ export function SuiteTemplate({ suiteId, mainImage, galleryImages }: SuiteTempla
             </Link>
           </div>
 
-          {/* ZONE ENCADRÉE DE PRÉSENTATION (CARROUSEL PAR URL) */}
+          {/* ZONE ENCADRÉE DE PRÉSENTATION */}
           <div className="border border-stone-200 dark:border-stone-800 p-4 md:p-8 mb-24 md:mb-36 relative bg-stone-50/30 dark:bg-stone-950/10">
             
-            {/* FLÈCHE GAUCHE : CHANGE L'URL VERS LA SUITE PRÉCÉDENTE */}
+            {/* FLÈCHES DESKTOP - Positionnées sur les côtés de l'image */}
             <button
               onClick={() => handleNavigate(prevSuiteId)}
-              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-30 p-3 bg-background border border-border hover:border-foreground rounded-full transition-all group shadow-sm"
-              title="Précédent"
+              className="hidden md:flex absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-30 p-3 bg-background border border-border hover:border-foreground rounded-full transition-all group shadow-sm items-center justify-center"
+              title={labelPrecedent}
             >
               <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" />
             </button>
 
-            {/* FLÈCHE DROITE : CHANGE L'URL VERS LA SUITE SUIVANTE */}
             <button
               onClick={() => handleNavigate(nextSuiteId)}
-              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-30 p-3 bg-background border border-border hover:border-foreground rounded-full transition-all group shadow-sm"
-              title="Suivant"
+              className="hidden md:flex absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-30 p-3 bg-background border border-border hover:border-foreground rounded-full transition-all group shadow-sm items-center justify-center"
+              title={labelSuivant}
             >
               <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-transform group-hover:translate-x-0.5" />
             </button>
 
             {/* CONTENU DE LA SUITE ACTUELLE */}
             <motion.div
-              key={suiteId} // Déclenche une transition fluide native à chaque changement d'URL
+              key={suiteId}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -90,8 +86,8 @@ export function SuiteTemplate({ suiteId, mainImage, galleryImages }: SuiteTempla
               className="grid md:grid-cols-12 gap-8 md:gap-16 items-center p-2 md:p-4"
             >
               
-              {/* Colonne Image Principale (Reçoit directement 'mainImage' liée à l'URL via le parent) */}
-              <div className="md:col-span-7 overflow-hidden bg-accent aspect-[4/5] md:aspect-[3/4] shadow-sm">
+              {/* Colonne Image Principale */}
+              <div className="md:col-span-7 overflow-hidden bg-accent aspect-[4/5] md:aspect-[3/4] shadow-sm relative">
                 <img
                   src={mainImage}
                   alt={suiteDetails.title}
@@ -136,12 +132,36 @@ export function SuiteTemplate({ suiteId, mainImage, galleryImages }: SuiteTempla
                   <Calendar className="h-4 w-4" />
                   {labelReserver}
                 </Link>
+
+                {/* NAVIGATION MOBILE - Après le bouton Book Now */}
+                <div className="flex md:hidden items-center justify-between mt-6 pt-6 border-t border-border">
+                  <button
+                    onClick={() => handleNavigate(prevSuiteId)}
+                    className="flex items-center gap-2 px-4 py-3 bg-background border border-border hover:border-foreground rounded-xl transition-all group text-xs tracking-wider uppercase"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                    <span className="text-muted-foreground group-hover:text-foreground">{labelPrecedent}</span>
+                  </button>
+                  
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {currentIndex + 1} / {SUITES_ORDER.length}
+                  </span>
+                  
+                  <button
+                    onClick={() => handleNavigate(nextSuiteId)}
+                    className="flex items-center gap-2 px-4 py-3 bg-background border border-border hover:border-foreground rounded-xl transition-all group text-xs tracking-wider uppercase"
+                  >
+                    <span className="text-muted-foreground group-hover:text-foreground">{labelSuivant}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                  </button>
+                </div>
+
               </div>
 
             </motion.div>
           </div>
 
-          {/* SECTION 2 : Galerie Mosaïque (Suit dynamiquement la suite de l'URL) */}
+          {/* SECTION 2 : Galerie Mosaïque */}
           {galleryImages && galleryImages.length > 0 && (
             <div className="border-t border-border pt-20 md:pt-32 relative z-10">
               <div className="mb-12">
