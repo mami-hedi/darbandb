@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OrderClientRouteImport } from './routes/order-client'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -28,9 +29,15 @@ import { Route as AdminTarifsRouteImport } from './routes/admin.tarifs'
 import { Route as AdminReservationsRouteImport } from './routes/admin.reservations'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminClientsRouteImport } from './routes/admin.clients'
+import { Route as AdminCheckHouseRouteImport } from './routes/admin.check-house'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
 import { Route as AdminAvailabilityRouteImport } from './routes/admin.availability'
 
+const OrderClientRoute = OrderClientRouteImport.update({
+  id: '/order-client',
+  path: '/order-client',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
@@ -126,6 +133,11 @@ const AdminClientsRoute = AdminClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AdminRoute,
 } as any).lazy(() => import('./routes/admin.clients.lazy').then((d) => d.Route))
+const AdminCheckHouseRoute = AdminCheckHouseRouteImport.update({
+  id: '/check-house',
+  path: '/check-house',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBlogRoute = AdminBlogRouteImport.update({
   id: '/blog',
   path: '/blog',
@@ -146,8 +158,10 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
+  '/order-client': typeof OrderClientRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -168,8 +182,10 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
+  '/order-client': typeof OrderClientRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -192,8 +208,10 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
+  '/order-client': typeof OrderClientRoute
   '/admin/availability': typeof AdminAvailabilityRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -217,8 +235,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/gallery'
+    | '/order-client'
     | '/admin/availability'
     | '/admin/blog'
+    | '/admin/check-house'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
@@ -239,8 +259,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/gallery'
+    | '/order-client'
     | '/admin/availability'
     | '/admin/blog'
+    | '/admin/check-house'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
@@ -262,8 +284,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/gallery'
+    | '/order-client'
     | '/admin/availability'
     | '/admin/blog'
+    | '/admin/check-house'
     | '/admin/clients'
     | '/admin/login'
     | '/admin/reservations'
@@ -286,6 +310,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
+  OrderClientRoute: typeof OrderClientRoute
   SuitesSuiteIdRoute: typeof SuitesSuiteIdRoute
   SuitesSuiteAmbreRoute: typeof SuitesSuiteAmbreRoute
   SuitesSuiteAzurRoute: typeof SuitesSuiteAzurRoute
@@ -295,6 +320,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/order-client': {
+      id: '/order-client'
+      path: '/order-client'
+      fullPath: '/order-client'
+      preLoaderRoute: typeof OrderClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gallery': {
       id: '/gallery'
       path: '/gallery'
@@ -428,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClientsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/check-house': {
+      id: '/admin/check-house'
+      path: '/check-house'
+      fullPath: '/admin/check-house'
+      preLoaderRoute: typeof AdminCheckHouseRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/blog': {
       id: '/admin/blog'
       path: '/blog'
@@ -448,6 +487,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAvailabilityRoute: typeof AdminAvailabilityRoute
   AdminBlogRoute: typeof AdminBlogRoute
+  AdminCheckHouseRoute: typeof AdminCheckHouseRoute
   AdminClientsRoute: typeof AdminClientsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminReservationsRoute: typeof AdminReservationsRoute
@@ -458,6 +498,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAvailabilityRoute: AdminAvailabilityRoute,
   AdminBlogRoute: AdminBlogRoute,
+  AdminCheckHouseRoute: AdminCheckHouseRoute,
   AdminClientsRoute: AdminClientsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminReservationsRoute: AdminReservationsRoute,
@@ -486,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
+  OrderClientRoute: OrderClientRoute,
   SuitesSuiteIdRoute: SuitesSuiteIdRoute,
   SuitesSuiteAmbreRoute: SuitesSuiteAmbreRoute,
   SuitesSuiteAzurRoute: SuitesSuiteAzurRoute,
@@ -495,13 +537,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
