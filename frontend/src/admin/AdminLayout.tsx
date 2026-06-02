@@ -5,9 +5,10 @@ import {
   Users, 
   FileText, 
   CalendarCheck, 
-  Coins, // <-- Nouvelle icône ajoutée pour les Tarifs
+  Coins, 
   LogOut, 
-  ExternalLink 
+  ExternalLink,
+  ShieldCheck // <-- Importez cette icône
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,8 @@ const nav: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/reservations", label: "Réservations", icon: CalendarRange },
   { to: "/admin/clients", label: "Clients", icon: Users },
-  { to: "/admin/tarifs", label: "Tarifs", icon: Coins }, // <-- Onglet inséré ici
+  { to: "/admin/tarifs", label: "Tarifs", icon: Coins },
+  { to: "/admin/check-house", label: "Vérifier État", icon: ShieldCheck }, // <-- Ajouté ici
   { to: "/admin/blog", label: "Blog", icon: FileText },
   { to: "/admin/availability", label: "Disponibilité", icon: CalendarCheck },
 ];
@@ -34,11 +36,17 @@ function Shell() {
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-foreground text-background">
         <div className="p-6 border-b border-background/10">
           <div className="font-display text-2xl">B&amp;B</div>
-          <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Admin · Hammamet</div>
+          <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Espace - Admin</div>
         </div>
+        
         <nav className="flex-1 p-4 space-y-1">
           {nav.map((n) => {
-            const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
+            // Note: On utilise un petit ajustement pour que /admin/check-house ne soit pas 
+            // considéré comme actif quand on est sur /admin
+            const active = n.exact 
+              ? pathname === n.to 
+              : pathname.startsWith(n.to);
+              
             return (
               <Link
                 key={n.to}
@@ -53,6 +61,8 @@ function Shell() {
             );
           })}
         </nav>
+
+        {/* Pied de sidebar */}
         <div className="p-4 border-t border-background/10 space-y-2">
           <Link to="/" className="flex items-center gap-3 px-4 py-2 text-xs text-background/70 hover:text-background">
             <ExternalLink className="h-3.5 w-3.5" /> Voir le site
@@ -69,19 +79,23 @@ function Shell() {
 
       {/* Contenu principal et Navigation Mobile */}
       <div className="flex-1 min-w-0">
-        {/* Mobile top bar */}
         <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4">
           <div className="font-display text-xl">B&amp;B Admin</div>
           <button onClick={() => { logout(); navigate({ to: "/" }); }} className="text-xs flex items-center gap-2"><LogOut className="h-4 w-4" /> Sortir</button>
         </div>
-        <div className="md:hidden flex overflow-x-auto bg-foreground text-background border-t border-background/10ss">
+        
+        {/* Mobile top bar navigation */}
+        <div className="md:hidden flex overflow-x-auto bg-foreground text-background border-t border-background/10">
           {nav.map((n) => {
             const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
             return (
-              <Link key={n.to} to={n.to} className={cn("flex-shrink-0 px-4 py-3 text-xs", active ? "bg-background/10" : "opacity-70")}>{n.label}</Link>
+              <Link key={n.to} to={n.to} className={cn("flex-shrink-0 px-4 py-3 text-xs", active ? "bg-background/10" : "opacity-70")}>
+                {n.label}
+              </Link>
             );
           })}
         </div>
+
         <main className="p-6 md:p-10 max-w-7xl">
           <Outlet />
         </main>

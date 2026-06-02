@@ -11,11 +11,16 @@ export class Reservation extends Model {
   public checkOutDate!: Date;
   public numberOfGuests!: number;
   public totalPrice!: number;
-  public specialRequests?: string; // Ajouté pour correspondre au controller
-  public source!: string;          // Ajouté pour les statistiques
+  public specialRequests?: string;
+  public source!: string;
   public status!: 'pending' | 'confirmed' | 'cancelled';
 
-  // Timestamps (automatiques avec Sequelize)
+  // ── Nouveaux champs : paiement avance ──
+  public depositAmount!: number;          // Montant de l'acompte demandé
+  public depositPaid!: boolean;           // Acompte reçu ou non
+  public depositPaidAt?: Date;            // Date de réception de l'acompte
+  public depositNotes?: string;           // Notes libres sur le paiement
+
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -23,68 +28,72 @@ export class Reservation extends Model {
 export const initReservationModel = (sequelize: Sequelize) => {
   Reservation.init(
     {
-      id: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true 
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
       },
-      refNumber: { 
-        type: DataTypes.STRING, 
-        unique: true, 
-        allowNull: false 
-      },
-      firstName: { 
-        type: DataTypes.STRING, 
-        allowNull: false 
-      },
-      lastName: { 
-        type: DataTypes.STRING, 
-        allowNull: false 
-      },
-      email: { 
-        type: DataTypes.STRING, 
-        allowNull: false 
-      },
-      phone: {
+      refNumber: {
         type: DataTypes.STRING,
-        allowNull: true
+        unique: true,
+        allowNull: false,
       },
-      checkInDate: { 
-        type: DataTypes.DATE, 
-        allowNull: false 
-      },
-      checkOutDate: { 
-        type: DataTypes.DATE, 
-        allowNull: false 
-      },
-      numberOfGuests: { 
+      firstName: { type: DataTypes.STRING, allowNull: false },
+      lastName:  { type: DataTypes.STRING, allowNull: false },
+      email:     { type: DataTypes.STRING, allowNull: false },
+      phone:     { type: DataTypes.STRING, allowNull: true },
+      checkInDate:  { type: DataTypes.DATE, allowNull: false },
+      checkOutDate: { type: DataTypes.DATE, allowNull: false },
+      numberOfGuests: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 2
+        defaultValue: 2,
       },
-      totalPrice: { 
-        type: DataTypes.DECIMAL(10, 2), 
-        allowNull: false 
+      totalPrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
       },
-      specialRequests: {
-        type: DataTypes.TEXT,
-        allowNull: true
-      },
+      specialRequests: { type: DataTypes.TEXT, allowNull: true },
       source: {
         type: DataTypes.STRING,
         allowNull: false,
-        defaultValue: 'direct' // 'direct', 'airbnb', 'booking', etc.
+        defaultValue: 'direct',
       },
-      status: { 
-        type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'), 
-        defaultValue: 'pending' 
+      status: {
+        type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'),
+        defaultValue: 'pending',
+      },
+
+      // ── Paiement / acompte ──
+      depositAmount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+        comment: 'Montant de l\'acompte demandé (ex : 30% du totalPrice)',
+      },
+      depositPaid: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: 'Vrai si l\'acompte a été encaissé',
+      },
+      depositPaidAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Date de réception de l\'acompte',
+      },
+      depositNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Notes libres sur le mode de paiement, référence virement, etc.',
       },
     },
-    { 
-      sequelize, 
+    {
+      sequelize,
       tableName: 'reservations',
-      timestamps: true 
+      timestamps: true,
     }
   );
+
   return Reservation;
 };

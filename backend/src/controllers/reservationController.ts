@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
-import { Op, fn, col, Sequelize } from 'sequelize'; // Correction : Import de Sequelize ici
-// Assurez-vous que le chemin relatif ../models/CustomPrice est correct selon votre structure de dossiers
+import { Op, fn, col, Sequelize } from 'sequelize';
 import { CustomPrice } from '../models/CustomPrice';
 
 export class ReservationController {
@@ -10,37 +9,39 @@ export class ReservationController {
 
   constructor() {
     this.emailService = new EmailService();
-    // Bindings
-    this.createReservation = this.createReservation.bind(this);
-    this.getReservations = this.getReservations.bind(this);
-    this.updateReservation = this.updateReservation.bind(this);
+    this.createReservation       = this.createReservation.bind(this);
+    this.getReservations         = this.getReservations.bind(this);
+    this.updateReservation       = this.updateReservation.bind(this);
     this.updateReservationStatus = this.updateReservationStatus.bind(this);
-    this.checkAvailability = this.checkAvailability.bind(this);
-    this.getClients = this.getClients.bind(this);
-    this.getDashboardStats = this.getDashboardStats.bind(this); // Ajout du bind manquant
+    this.updateDeposit           = this.updateDeposit.bind(this);
+    this.checkAvailability       = this.checkAvailability.bind(this);
+    this.getClients              = this.getClients.bind(this);
+    this.getDashboardStats       = this.getDashboardStats.bind(this);
+    this.getPricePreview         = this.getPricePreview.bind(this);
   }
 
-  /**
-   * POST - Créer une nouvelle réservation
-   */
+  // ─────────────────────────────────────────────────────────────
+  // POST /reservations  — créer une réservation
+  // ─────────────────────────────────────────────────────────────
   async createReservation(req: Request, res: Response) {
     try {
       const {
-        firstName, lastName, email, phone, 
-        numberOfGuests, checkInDate, checkOutDate, specialRequests,
+        firstName, lastName, email, phone,
+        numberOfGuests, checkInDate, checkOutDate,
+        specialRequests, depositAmount,
       } = req.body;
 
-      const existingReservation = await ReservationModel.findOne({
+      // Vérification disponibilité
+      const conflict = await ReservationModel.findOne({
         where: {
           status: { [Op.in]: ['confirmed', 'pending'] },
           [Op.and]: [
-            { checkInDate: { [Op.lt]: checkOutDate } },
-            { checkOutDate: { [Op.gt]: checkInDate } }
-          ]
+            { checkInDate:  { [Op.lt]: checkOutDate } },
+            { checkOutDate: { [Op.gt]: checkInDate  } },
+          ],
         },
       });
-
-      if (existingReservation) {
+      if (conflict) {
         return res.status(400).json({
           success: false,
           error: 'Ces dates sont déjà réservées ou en attente.',
@@ -52,43 +53,42 @@ export class ReservationController {
         return res.status(400).json({ success: false, error: 'Dates invalides.' });
       }
 
-      //const pricePerNight = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
-      //const totalPrice = nights * pricePerNight;
-      const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+      const totalPrice  = await this.calculateTotalPrice(checkInDate, checkOutDate);
+      // Si depositAmount fourni on l'utilise, sinon 30% arrondi
+      const deposit = depositAmount != null
+        ? parseFloat(depositAmount)
+        : Math.round(totalPrice * 0.3 * 100) / 100;
+
       const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
       const reservation = await ReservationModel.create({
         refNumber,
-        firstName,
-        lastName,
-        email,
-        phone,
+        firstName, lastName, email, phone,
         numberOfGuests: parseInt(numberOfGuests) || 2,
-        checkInDate,
-        checkOutDate,
+        checkInDate, checkOutDate,
         totalPrice,
         specialRequests,
         source: 'direct',
         status: 'pending',
+        depositAmount: deposit,
+        depositPaid: false,
+        depositPaidAt: null,
+        depositNotes: null,
       });
 
-      try {
-        await this.emailService.sendConfirmationEmail(reservation);
-      } catch (emailErr) {
-        console.error("Email de confirmation non envoyé:", emailErr);
-      }
+      try { await this.emailService.sendConfirmationEmail(reservation); }
+      catch (e) { console.error('Email non envoyé:', e); }
 
-      return res.status(201).json({
-        success: true,
-        data: reservation,
-        message: 'Réservation créée avec succès.',
-      });
+      return res.status(201).json({ success: true, data: reservation });
     } catch (error: any) {
-      console.error("Erreur Controller (Create):", error);
+      console.error('Erreur createReservation:', error);
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // GET /reservations
+  // ─────────────────────────────────────────────────────────────
   async getReservations(req: Request, res: Response) {
     try {
       const { status, month } = req.query;
@@ -110,53 +110,86 @@ export class ReservationController {
     }
   }
 
-  async getClients(req: Request, res: Response) {
+  // ─────────────────────────────────────────────────────────────
+  // GET /reservations/price-preview?checkIn=&checkOut=
+  // Retourne le détail nuit par nuit + total (utile pour le formulaire)
+  // ─────────────────────────────────────────────────────────────
+  async getPricePreview(req: Request, res: Response) {
     try {
-      const clients = await ReservationModel.findAll({
-        attributes: [
-          'email',
-          [fn('MAX', col('firstName')), 'firstName'],
-          [fn('MAX', col('lastName')), 'lastName'],
-          [fn('MAX', col('phone')), 'phone'],
-          [fn('COUNT', col('id')), 'stays'],
-          [fn('SUM', col('totalPrice')), 'totalSpent'],
-        ],
-        group: ['email'], 
-        order: [[fn('SUM', col('totalPrice')), 'DESC']],
-        raw: true 
+      const { checkIn, checkOut } = req.query as { checkIn: string; checkOut: string };
+      if (!checkIn || !checkOut) {
+        return res.status(400).json({ success: false, error: 'Dates manquantes.' });
+      }
+      const nights = this.calculateNights(checkIn, checkOut);
+      if (nights <= 0) {
+        return res.status(400).json({ success: false, error: 'Dates invalides.' });
+      }
+
+      const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+      const customPrices = await CustomPrice.findAll({
+        where: { specificDate: { [Op.between]: [checkIn, checkOut] } },
       });
-      return res.json({ success: true, data: clients });
+      const priceMap: Record<string, number> = {};
+      customPrices.forEach(cp => { priceMap[cp.specificDate] = parseFloat(cp.price as any); });
+
+      const breakdown: { date: string; price: number; isCustom: boolean }[] = [];
+      let total = 0;
+      const cursor = new Date(checkIn);
+      const end    = new Date(checkOut);
+      while (cursor < end) {
+        const ds    = cursor.toISOString().split('T')[0];
+        const price = priceMap[ds] !== undefined ? priceMap[ds] : basePrice;
+        breakdown.push({ date: ds, price, isCustom: priceMap[ds] !== undefined });
+        total += price;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          nights,
+          total: Math.round(total * 100) / 100,
+          suggestedDeposit: Math.round(total * 0.3 * 100) / 100,
+          breakdown,
+        },
+      });
     } catch (error: any) {
-      console.error("ERREUR SQL CLIENTS :", error.message);
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PUT /reservations/:id  — modifier une réservation
+  // ─────────────────────────────────────────────────────────────
   async updateReservation(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = { ...req.body };
       const reservation = await ReservationModel.findByPk(id);
       if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
-      
+
       const oldStatus = reservation.status;
+
+      // Recalcul prix si les dates changent
       if (updateData.checkInDate || updateData.checkOutDate) {
         const nights = this.calculateNights(
-          updateData.checkInDate || reservation.checkInDate,
-          updateData.checkOutDate || reservation.checkOutDate
+          updateData.checkInDate  || reservation.checkInDate,
+          updateData.checkOutDate || reservation.checkOutDate,
         );
-        //if (nights > 0) {
-         // const p = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
-         // updateData.totalPrice = nights * p;
-        //}
         if (nights > 0) {
-  updateData.totalPrice = await this.calculateTotalPrice(
-    updateData.checkInDate || reservation.checkInDate,
-    updateData.checkOutDate || reservation.checkOutDate
-  );
-}
+          updateData.totalPrice = await this.calculateTotalPrice(
+            updateData.checkInDate  || reservation.checkInDate,
+            updateData.checkOutDate || reservation.checkOutDate,
+          );
+          // Recalcul de l'acompte suggéré (si non surchargé explicitement)
+          if (updateData.depositAmount == null) {
+            updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
+          }
+        }
       }
+
       await reservation.update(updateData);
+
       if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
         await this.emailService.sendCancellationEmail(reservation);
       }
@@ -166,6 +199,9 @@ export class ReservationController {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PATCH /reservations/:id/status
+  // ─────────────────────────────────────────────────────────────
   async updateReservationStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -183,6 +219,41 @@ export class ReservationController {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PATCH /reservations/:id/deposit  — NEW
+  // Body : { depositAmount?, depositPaid, depositNotes? }
+  // ─────────────────────────────────────────────────────────────
+  async updateDeposit(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { depositAmount, depositPaid, depositNotes } = req.body;
+      const reservation = await ReservationModel.findByPk(id);
+      if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
+
+      const patch: Partial<{
+        depositAmount: number;
+        depositPaid: boolean;
+        depositPaidAt: Date | null;
+        depositNotes: string;
+      }> = {};
+
+      if (depositAmount !== undefined) patch.depositAmount = parseFloat(depositAmount);
+      if (depositPaid   !== undefined) {
+        patch.depositPaid   = Boolean(depositPaid);
+        patch.depositPaidAt = depositPaid ? new Date() : null;
+      }
+      if (depositNotes  !== undefined) patch.depositNotes = depositNotes;
+
+      await reservation.update(patch);
+      return res.json({ success: true, data: reservation });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // GET /availability?checkIn=&checkOut=
+  // ─────────────────────────────────────────────────────────────
   async checkAvailability(req: Request, res: Response) {
     try {
       const { checkIn, checkOut } = req.query;
@@ -190,9 +261,9 @@ export class ReservationController {
         where: {
           status: { [Op.in]: ['confirmed', 'pending'] },
           [Op.and]: [
-            { checkInDate: { [Op.lt]: checkOut as string } },
-            { checkOutDate: { [Op.gt]: checkIn as string } }
-          ]
+            { checkInDate:  { [Op.lt]: checkOut as string } },
+            { checkOutDate: { [Op.gt]: checkIn  as string } },
+          ],
         },
       });
       return res.json({ available: !conflict });
@@ -201,119 +272,137 @@ export class ReservationController {
     }
   }
 
-  /**
-   * GET - Statistiques globales pour le Dashboard (Admin)
-   */
+  // ─────────────────────────────────────────────────────────────
+  // GET /clients
+  // ─────────────────────────────────────────────────────────────
+  async getClients(req: Request, res: Response) {
+    try {
+      const clients = await ReservationModel.findAll({
+        attributes: [
+          'email',
+          [fn('MAX', col('firstName')), 'firstName'],
+          [fn('MAX', col('lastName')),  'lastName'],
+          [fn('MAX', col('phone')),     'phone'],
+          [fn('COUNT', col('id')),      'stays'],
+          [fn('SUM',   col('totalPrice')), 'totalSpent'],
+        ],
+        group:   ['email'],
+        order:   [[fn('SUM', col('totalPrice')), 'DESC']],
+        raw: true,
+      });
+      return res.json({ success: true, data: clients });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // GET /dashboard/stats
+  // ─────────────────────────────────────────────────────────────
   async getDashboardStats(req: Request, res: Response) {
     try {
-      // 1. Calcul des revenus et nuits par mois
       const monthlyData = await ReservationModel.findAll({
         attributes: [
           [fn('MONTH', col('checkInDate')), 'month'],
-          [fn('SUM', col('totalPrice')), 'revenue'],
-          // Utilisation d'un literal SQL pour calculer la différence de jours
-          [Sequelize.literal('SUM(DATEDIFF(checkOutDate, checkInDate))'), 'nights']
+          [fn('SUM', col('totalPrice')),    'revenue'],
+          [Sequelize.literal('SUM(DATEDIFF(checkOutDate, checkInDate))'), 'nights'],
         ],
-        where: { status: 'confirmed' },
-        group: [fn('MONTH', col('checkInDate'))],
-        order: [[fn('MONTH', col('checkInDate')), 'ASC']],
-        raw: true
+        where:  { status: 'confirmed' },
+        group:  [fn('MONTH', col('checkInDate'))],
+        order:  [[fn('MONTH', col('checkInDate')), 'ASC']],
+        raw: true,
       });
 
-      // 2. Répartition par source
       const sourcesData = await ReservationModel.findAll({
-        attributes: [
-          'source',
-          [fn('COUNT', col('id')), 'count']
-        ],
-        group: ['source'],
-        raw: true
+        attributes: ['source', [fn('COUNT', col('id')), 'count']],
+        group:  ['source'],
+        raw: true,
       });
 
-      // 3. Totaux
-      const totalRevenue = await ReservationModel.sum('totalPrice', { where: { status: 'confirmed' } });
-      const totalClients = await ReservationModel.count({ distinct: true, col: 'email' });
-      const upcoming = await ReservationModel.count({ 
-        where: { 
-          status: 'confirmed', 
-          checkInDate: { [Op.gte]: new Date() } 
-        } 
+      // Acomptes en attente
+      const pendingDeposits = await ReservationModel.count({
+        where: {
+          status:       { [Op.in]: ['pending', 'confirmed'] },
+          depositPaid:  false,
+          depositAmount: { [Op.gt]: 0 },
+        },
+      });
+      const pendingDepositTotal = await ReservationModel.sum('depositAmount', {
+        where: {
+          status:      { [Op.in]: ['pending', 'confirmed'] },
+          depositPaid: false,
+          depositAmount: { [Op.gt]: 0 },
+        },
       });
 
-      // 4. Formatage
-      const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+      const totalRevenue  = await ReservationModel.sum('totalPrice',  { where: { status: 'confirmed' } });
+      const totalClients  = await ReservationModel.count({ distinct: true, col: 'email' });
+      const upcoming      = await ReservationModel.count({
+        where: { status: 'confirmed', checkInDate: { [Op.gte]: new Date() } },
+      });
+
+      const monthNames = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
       const formattedRevenue = monthlyData.map((d: any) => ({
-        m: monthNames[d.month - 1] || 'Inconnu',
-        revenue: parseFloat(d.revenue) || 0,
-        nights: parseInt(d.nights) || 0
+        m:       monthNames[d.month - 1] || 'Inconnu',
+        revenue: parseFloat(d.revenue)   || 0,
+        nights:  parseInt(d.nights)      || 0,
       }));
 
       const formattedSources = sourcesData.map((s: any) => ({
-        name: s.source.charAt(0).toUpperCase() + s.source.slice(1),
-        value: parseInt(s.count) || 0
+        name:  s.source.charAt(0).toUpperCase() + s.source.slice(1),
+        value: parseInt(s.count) || 0,
       }));
 
       return res.json({
         success: true,
         data: {
-          revenue: formattedRevenue.length > 0 ? formattedRevenue : [{ m: 'Aucun', revenue: 0, nights: 0 }],
-          sources: formattedSources.length > 0 ? formattedSources : [{ name: 'Aucune', value: 0 }],
+          revenue:  formattedRevenue.length  > 0 ? formattedRevenue  : [{ m: 'Aucun', revenue: 0, nights: 0 }],
+          sources:  formattedSources.length  > 0 ? formattedSources  : [{ name: 'Aucune', value: 0 }],
           totals: {
-            revenue: totalRevenue || 0,
-            clients: totalClients || 0,
-            upcoming: upcoming || 0,
-            nights: formattedRevenue.reduce((acc, curr) => acc + curr.nights, 0)
-          }
-        }
+            revenue:             totalRevenue  || 0,
+            clients:             totalClients  || 0,
+            upcoming:            upcoming       || 0,
+            nights:              formattedRevenue.reduce((a, c) => a + c.nights, 0),
+            pendingDeposits,
+            pendingDepositTotal: pendingDepositTotal || 0,
+          },
+        },
       });
     } catch (error: any) {
-      console.error("Erreur DashboardStats:", error);
+      console.error('Erreur DashboardStats:', error);
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  private async calculateTotalPrice(checkIn: string, checkOut: string): Promise<number> {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+  // ─────────────────────────────────────────────────────────────
+  // Utilitaires privés
+  // ─────────────────────────────────────────────────────────────
+  private async calculateTotalPrice(checkIn: string | Date, checkOut: string | Date): Promise<number> {
+    const start     = new Date(checkIn);
+    const end       = new Date(checkOut);
+    const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
 
-  // 1. Récupérer toutes les exceptions de prix entre ces deux dates
-  const customPrices = await CustomPrice.findAll({
-    where: {
-      specificDate: {
-        [Op.between]: [checkIn, checkOut]
-      }
+    const checkInStr  = start.toISOString().split('T')[0];
+    const checkOutStr = end.toISOString().split('T')[0];
+
+    const customPrices = await CustomPrice.findAll({
+      where: { specificDate: { [Op.between]: [checkInStr, checkOutStr] } },
+    });
+    const priceMap: Record<string, number> = {};
+    customPrices.forEach(cp => { priceMap[cp.specificDate] = parseFloat(cp.price as any); });
+
+    let total = 0;
+    const cursor = new Date(start);
+    while (cursor < end) {
+      const ds = cursor.toISOString().split('T')[0];
+      total += priceMap[ds] !== undefined ? priceMap[ds] : basePrice;
+      cursor.setDate(cursor.getDate() + 1);
     }
-  });
-
-  // Convertir en dictionnaire indexable pour un accès rapide
-  const priceMap: { [key: string]: number } = {};
-  customPrices.forEach(cp => {
-    priceMap[cp.specificDate] = parseFloat(cp.price as any);
-  });
-
-  let totalPrice = 0;
-  const currentCursor = new Date(start);
-
-  // 2. Parcourir chaque nuitée (on s'arrête le jour du check-out)
-  while (currentCursor < end) {
-    const dateStr = currentCursor.toISOString().split('T')[0];
-    
-    // Si un prix spécifique existe en BDD pour cette nuit, on l'applique, sinon prix de base
-    const nightPrice = priceMap[dateStr] !== undefined ? priceMap[dateStr] : basePrice;
-    totalPrice += nightPrice;
-
-    // Avancer d'un jour
-    currentCursor.setDate(currentCursor.getDate() + 1);
+    return Math.round(total * 100) / 100;
   }
 
-  return totalPrice;
-}
-
-  private calculateNights(checkIn: string, checkOut: string): number {
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diff = end.getTime() - start.getTime();
+  private calculateNights(checkIn: string | Date, checkOut: string | Date): number {
+    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
 }

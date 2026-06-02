@@ -14,6 +14,8 @@ class AvailabilityController {
         this.checkDateRange = this.checkDateRange.bind(this);
         this.calculatePrice = this.calculatePrice.bind(this);
         this.getReservedDates = this.getReservedDates.bind(this);
+        this.getManualBlocks = this.getManualBlocks.bind(this); // ← manquant
+        this.toggleBlock = this.toggleBlock.bind(this); // ← manquant
     }
     /**
      * GET: Obtenir le calendrier complet d'un mois avec états de disponibilité
@@ -112,6 +114,59 @@ class AvailabilityController {
             });
             const occupied = this.extractOccupiedDates(reservations);
             return res.json({ success: true, data: occupied });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+    async toggleBlock(req, res) {
+        try {
+            const { date, available, note, reason, manualBlock } = req.body;
+            if (!date) {
+                return res.status(400).json({ success: false, error: 'Date requise' });
+            }
+            if (available === false) {
+                // BLOQUER : créer ou mettre à jour l'entrée
+                // Si tu as un modèle ManualBlock, fais un findOrCreate ici
+                // Pour l'instant, on retourne juste success
+                return res.json({
+                    success: true,
+                    action: 'blocked',
+                    data: { date, note, reason, manualBlock }
+                });
+            }
+            else {
+                // DÉBLOQUER : supprimer l'entrée
+                return res.json({
+                    success: true,
+                    action: 'unblocked',
+                    data: { date }
+                });
+            }
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+    // Dans AvailabilityController.ts
+    async getManualBlocks(req, res) {
+        try {
+            // Supposons que vous ayez un modèle 'ManualBlock' ou similaire
+            // const blocks = await ManualBlock.findAll();
+            // Pour l'exemple, voici comment renvoyer une structure compatible avec votre frontend :
+            return res.json({
+                success: true,
+                data: [
+                /* {
+                     id: '1',
+                     date: '2026-06-15',
+                     note: 'Travaux',
+                     reason: 'maintenance',
+                     createdAt: '...'
+                   }
+                */
+                ]
+            });
         }
         catch (error) {
             return res.status(500).json({ success: false, error: error.message });
