@@ -83,7 +83,7 @@ export function AvailabilityCalendar({
   const [priceInfo, setPriceInfo] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [basePrice, setBasePrice] = useState<number>(150);
+  const [basePrice, setBasePrice] = useState<number>(1500);
   const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
