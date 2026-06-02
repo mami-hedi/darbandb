@@ -205,8 +205,8 @@ philosophy: {
     },
     hero: {
       eyebrow: "Guesthouse · Hammamet",
-      title: "The art of staying\nby the Mediterranean",
-      sub: "A private villa designed for slowness, light, and silence. Whole-villa rental — never shared.",
+      title: "A Private Escape Between Sea and Mountain",
+      sub: "Discover an exceptional villa on the heights of Hammamet, blending contemporary luxury, smart comfort, and refined Tunisian hospitality. Enjoy panoramic views, bespoke experiences, and an atmosphere designed to slow down time.",
       cta: "Book the stay",
       cta2: "View gallery",
     },

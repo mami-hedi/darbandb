@@ -129,35 +129,47 @@ function Home() {
   return (
     <SiteLayout transparentHeader>
       {/* --- HERO (Identitaire, s'ouvre sur l'image) --- */}
-      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black">
-        <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
-          {[heroImg1, heroImg2, heroImg3].map((img, index) => (
-            <div key={index} className="relative h-full w-full overflow-hidden">
-              <motion.img
-                src={img}
-                alt={`Vue ${index + 1}`}
-                className="h-full w-full object-cover"
-                initial={{ scale: 1.15, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 1.6, delay: index * 0.2, ease: [0.25, 1, 0.5, 1] }}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/70" />
-        <div className="relative z-10 h-full container-luxe flex flex-col justify-end pb-20 md:pb-28 text-white">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
-            <div className="text-[0.7rem] tracking-[0.35em] uppercase text-white/80 mb-6">{t.hero.eyebrow}</div>
-            <h1 className="font-display text-5xl md:text-7xl leading-[1.05] whitespace-pre-line">{t.hero.title}</h1>
-            <p className="mt-8 max-w-xl text-base md:text-lg text-white/85 leading-relaxed">{t.hero.sub}</p>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/booking" className="inline-flex items-center gap-3 bg-white text-black px-7 py-4 text-xs tracking-[0.25em] uppercase hover:bg-white/90 transition">
-                {t.hero.cta} <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      {/* --- SECTION HÉRO MODIFIÉE --- */}
+<section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black">
+  {/* Images en fond (ne pas changer) */}
+  <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
+    {[heroImg1, heroImg2, heroImg3].map((img, index) => (
+      <div key={index} className="relative h-full w-full overflow-hidden">
+        <motion.img src={img} className="h-full w-full object-cover" />
+      </div>
+    ))}
+  </div>
+  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+
+  {/* CONTENEUR TEXTE : C'est ici que l'alignement se joue */}
+  <div className="relative z-10 h-full container-luxe flex items-center justify-start">
+    <motion.div 
+  initial={{ opacity: 0, x: -30 }} 
+  animate={{ opacity: 1, x: 0 }} 
+  transition={{ duration: 0.8 }}
+  className="max-w-2xl text-left"
+>
+  {/* On ajoute 'break-words' et on ajuste la taille sur mobile */}
+  <h1 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[1.05] text-white mb-6 sm:mb-8 break-words">
+    {t.hero.title}
+  </h1>
+  
+  {/* On limite la largeur du paragraphe pour éviter qu'il ne s'étire trop */}
+  <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-white/90 leading-relaxed font-light max-w-lg">
+    {t.hero.sub}
+  </p>
+  
+  <div className="mt-8 sm:mt-12">
+    <Link 
+      to="/booking" 
+      className="inline-flex items-center gap-3 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 text-[10px] sm:text-xs tracking-[0.2em] sm:tracking-[0.25em] uppercase hover:bg-stone-200 transition"
+    >
+      {t.hero.cta} <ArrowRight className="h-4 w-4" />
+    </Link>
+  </div>
+</motion.div>
+  </div>
+</section>
 
       {/* --- CONTAINER ENTIÈREMENT DARK MODE (Noir Pur) --- */}
       <div className="bg-black text-white dark">
