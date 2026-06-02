@@ -6,7 +6,6 @@ interface MultilingualText {
 }
 
 export class BlogPost extends Model {
-  // Utilise "declare" au lieu de "public"
   declare id: number;
   declare slug: string;
   declare date: string;
@@ -16,6 +15,9 @@ export class BlogPost extends Model {
   declare category: MultilingualText;
   declare cover: string;
   declare status: 'draft' | 'published' | 'archived';
+  declare metaTitle: MultilingualText;
+  declare metaDescription: MultilingualText;
+  declare imageAlt: MultilingualText;
 }
 
 export const initBlogPostModel = (sequelize: Sequelize) => {
@@ -23,37 +25,83 @@ export const initBlogPostModel = (sequelize: Sequelize) => {
     {
       id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       slug: { type: DataTypes.STRING(255), unique: true, allowNull: false },
-      date: { 
-        type: DataTypes.STRING(50), 
+      date: {
+        type: DataTypes.STRING(50),
         allowNull: false,
-        defaultValue: () => new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+        defaultValue: () =>
+          new Date().toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }),
       },
-      // Gestion sécurisée du JSON pour MySQL
-      title: { 
-        type: DataTypes.JSON, 
+      title: {
+        type: DataTypes.JSON,
         allowNull: false,
-        get() { return JSON.parse(JSON.stringify(this.getDataValue('title') || { fr: '', en: '' })); }
+        get() {
+          return JSON.parse(JSON.stringify(this.getDataValue('title') || { fr: '', en: '' }));
+        },
       },
-      excerpt: { 
-        type: DataTypes.JSON, 
+      excerpt: {
+        type: DataTypes.JSON,
         allowNull: false,
-        get() { return JSON.parse(JSON.stringify(this.getDataValue('excerpt') || { fr: '', en: '' })); }
+        get() {
+          return JSON.parse(JSON.stringify(this.getDataValue('excerpt') || { fr: '', en: '' }));
+        },
       },
-      body: { 
-        type: DataTypes.JSON, 
+      body: {
+        type: DataTypes.JSON,
         allowNull: false,
-        get() { return JSON.parse(JSON.stringify(this.getDataValue('body') || { fr: '', en: '' })); }
+        get() {
+          return JSON.parse(JSON.stringify(this.getDataValue('body') || { fr: '', en: '' }));
+        },
       },
-      category: { 
-        type: DataTypes.JSON, 
+      category: {
+        type: DataTypes.JSON,
         allowNull: false,
-        get() { return JSON.parse(JSON.stringify(this.getDataValue('category') || { fr: 'Inspiration', en: 'Inspiration' })); }
+        get() {
+          return JSON.parse(
+            JSON.stringify(this.getDataValue('category') || { fr: 'Inspiration', en: 'Inspiration' })
+          );
+        },
       },
       cover: { type: DataTypes.STRING(500), allowNull: false },
-      status: { 
-        type: DataTypes.ENUM('draft', 'published', 'archived'), 
+      status: {
+        type: DataTypes.ENUM('draft', 'published', 'archived'),
         defaultValue: 'published',
-        allowNull: false
+        allowNull: false,
+      },
+
+      // ── Nouveaux champs SEO ──
+      metaTitle: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: { fr: '', en: '' },
+        get() {
+          return JSON.parse(
+            JSON.stringify(this.getDataValue('metaTitle') || { fr: '', en: '' })
+          );
+        },
+      },
+      metaDescription: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: { fr: '', en: '' },
+        get() {
+          return JSON.parse(
+            JSON.stringify(this.getDataValue('metaDescription') || { fr: '', en: '' })
+          );
+        },
+      },
+      imageAlt: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: { fr: '', en: '' },
+        get() {
+          return JSON.parse(
+            JSON.stringify(this.getDataValue('imageAlt') || { fr: '', en: '' })
+          );
+        },
       },
     },
     {

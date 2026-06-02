@@ -1,14 +1,131 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
-import { motion } from "framer-motion"; // Import de framer-motion
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export const Route = createFileRoute("/blog")({
   component: Blog,
 });
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const getImageUrl = (path: string) => {
+  if (!path) return "";
+  if (path.startsWith("http") || path.startsWith("blob")) return path;
+  return `${API_BASE.replace("/api", "")}${path}`;
+};
+
+// Carte individuelle avec effet sticky + parallax sur l'image
+function BlogCard({ post, index, lang }: { post: any; index: number; lang: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+
+  // Parallax subtil sur l'image
+  const imageY = useTransform(scrollYProgress, [0, 1], ["6%", "-6%"]);
+
+  const title = post.title?.[lang] || post.title?.fr || "Sans titre";
+  const excerpt = post.excerpt?.[lang] || post.excerpt?.fr || "";
+  const category = post.category?.[lang] || post.category?.fr || "Inspiration";
+  const formattedDate = new Date(post.createdAt).toLocaleDateString(
+    lang === "fr" ? "fr-FR" : "en-US",
+    { year: "numeric", month: "long", day: "numeric" }
+  );
+
+  return (
+    <div
+      ref={ref}
+      className="sticky"
+      style={{ top: `${80 + index * 24}px` }} // Décalage en cascade pour l'effet stack
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 60 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-8%" }}
+        transition={{ duration: 0.9, ease: [0.215, 0.61, 0.355, 1] }}
+      >
+        <Link
+          to="/blog/$slug"
+          params={{ slug: post.slug }}
+          className="group block bg-white border border-stone-100 overflow-hidden"
+          style={{ borderRadius: 0 }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[480px] md:min-h-[560px]">
+
+            {/* IMAGE — alterne gauche/droite selon l'index */}
+            <div
+              className={`relative overflow-hidden bg-stone-100 ${
+                index % 2 === 1 ? "md:order-2" : ""
+              }`}
+            >
+              <motion.div
+                className="absolute inset-0"
+                style={{ y: imageY }}
+              >
+                <img
+                  src={getImageUrl(post.cover)}
+                  alt={title}
+                  className="h-[115%] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                  style={{ marginTop: "-7.5%" }}
+                />
+              </motion.div>
+
+              {/* Badge catégorie sur l'image */}
+              <div className="absolute top-6 left-6 z-10">
+                <span className="text-[9px] tracking-[0.22em] uppercase font-bold bg-white/90 text-stone-700 px-3 py-1.5 backdrop-blur-sm">
+                  {category}
+                </span>
+              </div>
+
+              {/* Numéro d'article */}
+              <div className="absolute bottom-6 right-6 z-10">
+                <span className="font-display text-white/40 text-4xl font-bold select-none">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+
+            {/* TEXTE */}
+            <div
+              className={`flex flex-col justify-between p-10 md:p-14 lg:p-20 ${
+                index % 2 === 1 ? "md:order-1" : ""
+              }`}
+            >
+              {/* Haut : date */}
+              <div className="text-[10px] tracking-[0.25em] uppercase text-stone-400 font-semibold">
+                {formattedDate}
+              </div>
+
+              {/* Milieu : titre + extrait */}
+              <div className="flex flex-col gap-6 my-auto py-10">
+                <h2 className="font-display text-3xl md:text-4xl lg:text-5xl leading-[1.08] text-stone-900 group-hover:text-stone-500 transition-colors duration-500">
+                  {title}
+                </h2>
+                <p className="text-stone-500 text-base leading-relaxed line-clamp-4 max-w-sm">
+                  {excerpt}
+                </p>
+              </div>
+
+              {/* Bas : CTA */}
+              <div className="flex items-center gap-3 border-t border-stone-100 pt-6">
+                <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-stone-400 group-hover:text-stone-900 transition-colors duration-300">
+                  {lang === "fr" ? "Lire l'article" : "Read more"}
+                </span>
+                <span className="text-stone-300 group-hover:text-stone-900 transition-all duration-300 transform group-hover:translate-x-1">
+                  →
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </Link>
+      </motion.div>
+    </div>
+  );
+}
 
 function Blog() {
   const { t, lang } = useLang();
@@ -20,104 +137,53 @@ function Blog() {
       .then((res) => res.json())
       .then((data) => {
         const rawPosts = Array.isArray(data) ? data : [];
-        
-        const cleanedPosts = rawPosts.map((p: any) => ({
+        const cleaned = rawPosts.map((p: any) => ({
           ...p,
-          title: typeof p.title === 'string' ? JSON.parse(p.title) : p.title,
-          excerpt: typeof p.excerpt === 'string' ? JSON.parse(p.excerpt) : p.excerpt,
-          category: typeof p.category === 'string' ? JSON.parse(p.category) : p.category,
+          title: typeof p.title === "string" ? JSON.parse(p.title) : p.title,
+          excerpt: typeof p.excerpt === "string" ? JSON.parse(p.excerpt) : p.excerpt,
+          category: typeof p.category === "string" ? JSON.parse(p.category) : p.category,
         }));
-
-        const published = cleanedPosts.filter((p: any) => p.status === "published");
-        setPosts(published);
+        setPosts(cleaned.filter((p: any) => p.status === "published"));
       })
       .catch((err) => console.error("Erreur blog:", err))
       .finally(() => setLoading(false));
   }, []);
 
-  // Configuration de l'animation au scroll pour chaque ligne
-  const rowVariants = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.8, ease: [0.215, 0.610, 0.355, 1.000] } // Transition fluide style luxe
-    }
-  };
-
   return (
     <SiteLayout>
-      {/* En-tête du blog */}
-      <section className="container-luxe pt-16 pb-16">
-        <div className="eyebrow mb-4">— Journal</div>
-        <h1 className="font-display text-5xl md:text-7xl">{t.blogTitle}</h1>
-        <p className="mt-4 text-muted-foreground max-w-xl">{t.blogSub}</p>
+      {/* ── EN-TÊTE ── */}
+      <section className="container-luxe pt-16 pb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.215, 0.61, 0.355, 1] }}
+        >
+          <div className="eyebrow mb-4">— Journal</div>
+          <h1 className="font-display text-5xl md:text-7xl">{t.blogTitle}</h1>
+          <p className="mt-4 text-muted-foreground max-w-xl">{t.blogSub}</p>
+        </motion.div>
       </section>
 
-      {/* Section style "Total Escape" : Grid à 3 colonnes sur desktop */}
-      <section className="container-luxe pb-32 flex flex-col gap-20 md:gap-28">
+      {/* ── SÉPARATEUR ── */}
+      <div className="w-full border-t border-stone-200" />
+
+      {/* ── ARTICLES ── */}
+      <section className="pb-40">
         {loading ? (
-          <p className="text-center py-20 font-display opacity-50 uppercase tracking-widest">Chargement...</p>
+          <p className="text-center py-32 font-display opacity-30 uppercase tracking-widest text-sm">
+            Chargement...
+          </p>
+        ) : posts.length === 0 ? (
+          <p className="text-center py-32 text-stone-400 text-sm">
+            {lang === "fr" ? "Aucun article publié." : "No published articles yet."}
+          </p>
         ) : (
-          posts.map((p, index) => {
-            const title = p.title?.[lang] || p.title?.['fr'] || "Sans titre";
-            const excerpt = p.excerpt?.[lang] || p.excerpt?.['fr'] || "";
-            const category = p.category?.[lang] || p.category?.['fr'] || "Inspiration";
-            const formattedDate = new Date(p.createdAt).toLocaleDateString(
-              lang === 'fr' ? 'fr-FR' : 'en-US', 
-              { year: 'numeric', month: 'long', day: 'numeric' }
-            );
-
-            return (
-              <motion.div
-                key={p.slug}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-10%" }}
-                variants={rowVariants}
-              >
-                <Link 
-                  to="/blog/$slug" 
-                  params={{ slug: p.slug }} 
-                  className="group grid grid-cols-1 md:grid-cols-12 gap-8 items-center border-b border-stone-200/60 pb-12 md:pb-16 last:border-none"
-                >
-                  
-                  {/* COLONNE 1 : TITRE & CATEGORIE (Prend 4 colonnes sur 12) */}
-                  <div className="md:col-span-4 flex flex-col justify-center">
-                    <span className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground font-semibold mb-3">
-                      {category} — {formattedDate}
-                    </span>
-                    <h2 className="font-display text-3xl md:text-4xl lg:text-5xl leading-tight text-stone-900 group-hover:text-stone-600 transition-colors duration-300">
-                      {title}
-                    </h2>
-                  </div>
-
-                  {/* COLONNE 2 : IMAGE ALIGNÉE AU CENTRE (Prend 4 colonnes sur 12) */}
-                  <div className="md:col-span-4 flex justify-center w-full">
-                    <div className="aspect-[4/5] w-full max-w-[340px] overflow-hidden bg-stone-100 shadow-sm">
-                      <img 
-                        src={p.cover} 
-                        alt={title} 
-                        className="h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" 
-                      />
-                    </div>
-                  </div>
-
-                  {/* COLONNE 3 : DESCRIPTION / EXTRAIT (Prend 4 colonnes sur 12) */}
-                  <div className="md:col-span-4 flex flex-col justify-center">
-                    <p className="text-stone-600 font-sans text-base md:text-md leading-relaxed line-clamp-4 md:max-w-xs md:ml-auto">
-                      {excerpt}
-                    </p>
-                    {/* Lien "Lire l'article" invisible sur mobile, apparaît subtilement au hover */}
-                    <span className="hidden md:block text-xs uppercase tracking-widest text-stone-400 group-hover:text-stone-900 mt-6 transition-colors duration-300 md:ml-auto underline underline-offset-4">
-                      Lire l'article →
-                    </span>
-                  </div>
-
-                </Link>
-              </motion.div>
-            );
-          })
+          // Espace suffisant pour que le sticky fonctionne bien
+          <div className="flex flex-col" style={{ gap: "2px" }}>
+            {posts.map((post, index) => (
+              <BlogCard key={post.slug} post={post} index={index} lang={lang} />
+            ))}
+          </div>
         )}
       </section>
     </SiteLayout>
