@@ -42,5 +42,17 @@ router.get('/me', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
+router.get('/reset-admin', async (req, res) => {
+  try {
+    await Admin.destroy({ where: {} }); // supprime tous les admins
+    await Admin.create({
+      email: 'experience@bnb-villa.com',
+      password: 'VotreMotDePasseSecret123',
+    });
+    res.json({ success: true, message: 'Admin réinitialisé' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
 // 3. Exportez le routeur à la fin
 export default router;
