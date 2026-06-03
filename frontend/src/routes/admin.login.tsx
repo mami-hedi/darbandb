@@ -12,7 +12,7 @@ const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5
 function Login() {
   const { login } = useAdminAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@dar-bb.com");
+  const [email, setEmail] = useState("experience@bnb-villa.com");
   const [pwd, setPwd] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [err, setErr] = useState("");

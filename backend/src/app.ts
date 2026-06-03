@@ -70,7 +70,7 @@ app.use('/api/rates', rateRulesRouter);
 const seedAdmin = async () => {
   const adminCount = await Admin.count();
   if (adminCount === 0) {
-    const password = process.env.INITIAL_ADMIN_PASSWORD || 'Admin123Default';
+    const password = process.env.INITIAL_ADMIN_PASSWORD || 'VotreMotDePasseSecret123';
     await Admin.create({
       email: 'experience@bnb-villa.com',
       password: password,
