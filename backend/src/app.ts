@@ -10,6 +10,7 @@ import { initBlogPostModel } from './models/blogModel';
 import { initAdminModel, Admin } from './models/Admin';
 import { initCustomPriceModel } from './models/CustomPrice';
 import { initRateRuleModel } from './models/RateRule';
+import { initManualBlockModel } from './models/ManualBlock'; // ← AJOUT
 import availabilityRoutes from './routes/Availability';
 import reservationRoutes from './routes/reservations';
 import blogRoutes from './routes/blogRoutes';
@@ -25,7 +26,6 @@ app.use((req, res, next) => {
 });
 
 app.use(helmet({
-  // Permettre le chargement des images locales
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cookieParser());
@@ -33,6 +33,8 @@ app.use(cookieParser());
 const allowedOrigins = [
   'http://localhost:8080',
   'http://localhost:5173',
+  'https://bnb-villa.com',       // ← nouveau domaine
+  'https://www.bnb-villa.com',   // ← avec www
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
@@ -55,9 +57,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── Fichiers statiques ────────────────────────────────────────────────────────
-// Les images uploadées dans src/assets/blogImages sont accessibles via :
-// http://localhost:5000/assets/blogImages/blog-xxx.jpg
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // ── Modèles ───────────────────────────────────────────────────────────────────
@@ -66,6 +65,7 @@ initBlogPostModel(sequelize);
 initAdminModel(sequelize);
 initCustomPriceModel(sequelize);
 initRateRuleModel(sequelize);
+initManualBlockModel(sequelize); // ← AJOUT
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
