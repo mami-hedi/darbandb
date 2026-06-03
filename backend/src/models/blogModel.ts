@@ -24,7 +24,7 @@ export const initBlogPostModel = (sequelize: Sequelize) => {
   BlogPost.init(
     {
       id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      slug: { type: DataTypes.STRING(255), unique: true, allowNull: false },
+      slug: { type: DataTypes.STRING(255), unique: 'blogposts_slug_unique', allowNull: false },
       date: {
         type: DataTypes.STRING(50),
         allowNull: false,
