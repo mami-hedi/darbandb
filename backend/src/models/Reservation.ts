@@ -34,10 +34,10 @@ export const initReservationModel = (sequelize: Sequelize) => {
         autoIncrement: true,
       },
       refNumber: {
-        type: DataTypes.STRING,
-        unique: true,
-        allowNull: false,
-      },
+  type: DataTypes.STRING,
+  unique: 'reservations_refNumber_unique',  // nom fixe
+  allowNull: false,
+},
       firstName: { type: DataTypes.STRING, allowNull: false },
       lastName:  { type: DataTypes.STRING, allowNull: false },
       email:     { type: DataTypes.STRING, allowNull: false },
