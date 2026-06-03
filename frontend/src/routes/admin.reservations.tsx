@@ -651,9 +651,7 @@ function ReservationRow({ reservation: r, onUpdate, onDeposit, onEdit }: {
         <td className="p-4">
           <div className="space-y-1">
             <DepositBadge r={r} />
-            <button onClick={() => setShowDeposit(!showDeposit)} className="text-[10px] text-muted-foreground hover:text-foreground hover:underline">
-              {showDeposit ? "Fermer" : "Modifier acompte"}
-            </button>
+            
           </div>
         </td>
         <td className="p-4"><StatusBadge s={r.status} /></td>
