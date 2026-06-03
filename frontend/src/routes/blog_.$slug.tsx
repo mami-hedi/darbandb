@@ -12,18 +12,19 @@ const getImageUrl = (path: string) => {
   return `${API_BASE.replace("/api", "")}${path}`;
 };
 
-export const Route = createFileRoute("/blog/$slug")({
+export const Route = createFileRoute("/blog_/$slug")({
   loader: async ({ params }) => {
-    try {
-      const res = await fetch(`${API_BASE}/blog/${params.slug}`);
-      if (!res.ok) throw notFound();
-      const post = await res.json();
-      return { post };
-    } catch (err) {
-      console.error("Erreur Loader:", err);
-      throw notFound();
-    }
-  },
+  try {
+    const res = await fetch(`${API_BASE}/blog/${params.slug}`);
+    if (!res.ok) throw notFound();
+    const post = await res.json();
+    return { post };
+  } catch (err: any) {
+    if (err?.isNotFound) throw err;  // laisse passer le notFound
+    console.error("Erreur Loader:", err);
+    throw notFound();
+  }
+},
   head: ({ loaderData }) => {
     if (!loaderData?.post) return { meta: [] };
     const { post } = loaderData;
