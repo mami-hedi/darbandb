@@ -7,6 +7,7 @@ import { useDailyPrices } from "../hooks/useDailyPrices";
 import { parseApiPrice } from "../utils/dateHelper";
 import { Calendar, Save, Trash2, DollarSign, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import "react-day-picker/src/style.css";
+import { AdminPage } from "@/components/AdminPage"; // <-- AJOUTEZ CETTE LIGNE
 
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
@@ -179,6 +180,7 @@ useEffect(() => {
   };
 
   return (
+    
     <div className="min-h-screen bg-neutral-950 text-white font-sans">
       {/* En-tête - Responsive */}
       <div className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-40">
@@ -536,6 +538,7 @@ useEffect(() => {
         }
       `}</style>
     </div>
+    
   );
 }
 
