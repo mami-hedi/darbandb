@@ -2,7 +2,7 @@ import { Model, DataTypes, Sequelize } from 'sequelize';
 
 export class ManualBlock extends Model {
   public id!: number;
-  public date!: string;           // Format YYYY-MM-DD
+  public date!: string;
   public note!: string;
   public reason!: 'maintenance' | 'cleaning' | 'family' | 'other';
   public createdAt!: Date;
@@ -18,9 +18,9 @@ export const initManualBlockModel = (sequelize: Sequelize) => {
         autoIncrement: true,
       },
       date: {
-        type: DataTypes.DATEONLY,   // Stocke uniquement YYYY-MM-DD, sans heure
+        type: DataTypes.DATEONLY,
         allowNull: false,
-        unique: true,               // Une seule entrée par date
+        unique: 'manual_blocks_date_unique', // ← nom fixe, évite les index dupliqués
       },
       note: {
         type: DataTypes.TEXT,
@@ -38,6 +38,5 @@ export const initManualBlockModel = (sequelize: Sequelize) => {
       timestamps: true,
     }
   );
-
   return ManualBlock;
 };

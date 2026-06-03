@@ -16,15 +16,24 @@ const getImageUrl = (path: string) => {
   return `${API_BASE.replace("/api", "")}${path}`;
 };
 
-// Carte individuelle avec effet sticky + parallax sur l'image
 function BlogCard({ post, index, lang }: { post: any; index: number; lang: string }) {
   const ref = useRef<HTMLDivElement>(null);
+
+  // ── Détection mobile ──
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start end", "end start"],
   });
 
-  // Parallax subtil sur l'image
+  // Parallax désactivé sur mobile
   const imageY = useTransform(scrollYProgress, [0, 1], ["6%", "-6%"]);
 
   const title = post.title?.[lang] || post.title?.fr || "Sans titre";
@@ -37,10 +46,10 @@ function BlogCard({ post, index, lang }: { post: any; index: number; lang: strin
 
   return (
     <div
-  ref={ref}
-  className="sticky"
-  style={{ top: `${80 + index * 24}px`, zIndex: index + 1 }}
->
+      ref={ref}
+      className="sticky"
+      style={{ top: `${80 + index * 24}px`, zIndex: index + 1 }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -63,13 +72,16 @@ function BlogCard({ post, index, lang }: { post: any; index: number; lang: strin
             >
               <motion.div
                 className="absolute inset-0"
-                style={{ y: imageY }}
+                style={{ y: isMobile ? 0 : imageY }}
               >
                 <img
                   src={getImageUrl(post.cover)}
                   alt={title}
-                  className="h-[115%] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                  style={{ marginTop: "-7.5%" }}
+                  className="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                  style={{
+                    height: isMobile ? "100%" : "115%",
+                    marginTop: isMobile ? "0" : "-7.5%",
+                  }}
                 />
               </motion.div>
 
@@ -178,7 +190,6 @@ function Blog() {
             {lang === "fr" ? "Aucun article publié." : "No published articles yet."}
           </p>
         ) : (
-          // Espace suffisant pour que le sticky fonctionne bien
           <div className="flex flex-col" style={{ gap: "2px" }}>
             {posts.map((post, index) => (
               <BlogCard key={post.slug} post={post} index={index} lang={lang} />
