@@ -22,6 +22,7 @@ import priceRoutes from './routes/priceRoutes';
 import rateRulesRouter from './routes/rateRules';
 
 const app = express();
+app.set('trust proxy', 1); // ← fix Render proxy
 
 // Middlewares de sécurité et parsing
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
