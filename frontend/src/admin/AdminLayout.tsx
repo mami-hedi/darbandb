@@ -1,22 +1,14 @@
+import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { 
-  LayoutDashboard, 
-  CalendarRange, 
-  Users, 
-  FileText, 
-  CalendarCheck, 
-  Coins, 
-  LogOut, 
-  ExternalLink,
-  ShieldCheck,
-  KeyRound,
-  X,
-  Eye,
-  EyeOff,
+  LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, 
+  Coins, LogOut, ExternalLink, ShieldCheck, KeyRound, X, Eye, EyeOff, Menu 
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+
+// --- Configuration ---
+const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 const nav: NavItem[] = [
@@ -29,8 +21,7 @@ const nav: NavItem[] = [
   { to: "/admin/availability", label: "Disponibilité", icon: CalendarCheck },
 ];
 
-const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
-
+// --- Composant : Modal Changement de mot de passe ---
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -43,20 +34,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
-    setErr("");
-    if (!currentPwd || !newPwd || !confirmPwd) {
-      setErr("Veuillez remplir tous les champs.");
-      return;
-    }
-    if (newPwd.length < 8) {
-      setErr("Le nouveau mot de passe doit contenir au moins 8 caractères.");
-      return;
-    }
-    if (newPwd !== confirmPwd) {
-      setErr("Les mots de passe ne correspondent pas.");
-      return;
-    }
-
+    if (newPwd !== confirmPwd) return setErr("Les mots de passe ne correspondent pas.");
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/update-password`, {
@@ -65,104 +43,35 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         credentials: "include",
         body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
       });
-      const data = await res.json();
       if (res.ok) {
         setSuccess(true);
-        setTimeout(() => onClose(), 1500);
+        setTimeout(onClose, 1500);
       } else {
+        const data = await res.json();
         setErr(data.message || "Erreur lors du changement.");
       }
-    } catch {
-      setErr("Erreur de connexion au serveur.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setErr("Erreur de connexion."); } finally { setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
-        {/* Header */}
+    <div className="fixed inset-0 z-[500] bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div className="flex items-center gap-2">
-            <KeyRound size={16} className="text-stone-600" />
-            <h2 className="text-sm font-bold uppercase tracking-wider">Modifier le mot de passe</h2>
-          </div>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700 transition">
-            <X size={18} />
-          </button>
+          <h2 className="text-sm font-bold uppercase">Modifier mot de passe</h2>
+          <button onClick={onClose}><X size={18} /></button>
         </div>
-
-        {/* Body */}
         <div className="p-6 space-y-4">
           {success ? (
-            <div className="text-center py-4">
-              <p className="text-emerald-600 font-semibold text-sm">✓ Mot de passe modifié avec succès !</p>
-            </div>
+            <p className="text-center text-emerald-600 font-semibold text-sm">✓ Succès !</p>
           ) : (
             <>
-              {/* Mot de passe actuel */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">Mot de passe actuel</label>
-                <div className="relative">
-                  <input
-                    type={showCurrent ? "text" : "password"}
-                    value={currentPwd}
-                    onChange={e => setCurrentPwd(e.target.value)}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-stone-300"
-                  />
-                  <button type="button" onClick={() => setShowCurrent(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                    {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Nouveau mot de passe */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">Nouveau mot de passe</label>
-                <div className="relative">
-                  <input
-                    type={showNew ? "text" : "password"}
-                    value={newPwd}
-                    onChange={e => setNewPwd(e.target.value)}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-stone-300"
-                  />
-                  <button type="button" onClick={() => setShowNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                    {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Confirmer */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">Confirmer le mot de passe</label>
-                <div className="relative">
-                  <input
-                    type={showConfirm ? "text" : "password"}
-                    value={confirmPwd}
-                    onChange={e => setConfirmPwd(e.target.value)}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-stone-300"
-                  />
-                  <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                    {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              {err && <p className="text-xs text-red-500 font-medium">{err}</p>}
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={onClose} className="flex-1 py-2.5 text-sm text-stone-500 bg-stone-100 hover:bg-stone-200 rounded-lg transition font-medium">
-                  Annuler
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="flex-1 py-2.5 text-sm font-bold text-white bg-stone-900 hover:bg-stone-700 rounded-lg transition disabled:opacity-50"
-                >
-                  {loading ? "..." : "Enregistrer"}
-                </button>
-              </div>
+              <input type={showCurrent ? "text" : "password"} placeholder="Actuel" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
+              <input type={showNew ? "text" : "password"} placeholder="Nouveau" value={newPwd} onChange={e => setNewPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
+              <input type={showConfirm ? "text" : "password"} placeholder="Confirmer" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
+              {err && <p className="text-xs text-red-500">{err}</p>}
+              <button onClick={handleSubmit} disabled={loading} className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-bold">
+                {loading ? "..." : "Enregistrer"}
+              </button>
             </>
           )}
         </div>
@@ -171,90 +80,80 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// --- Composant : Shell Principal ---
 function Shell() {
   const { logout } = useAdminAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [showChangePwd, setShowChangePwd] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const isLoginPage = pathname === "/admin/login";
-  
+
+  const handleLogout = () => { logout(); navigate({ to: "/" }); setIsMenuOpen(false); };
+
   return (
-    <div className={cn("min-h-screen bg-secondary/30 flex", isLoginPage && "items-center justify-center")}>
-      
+    <div className={cn("min-h-screen bg-secondary/30 flex", isLoginPage ? "items-center justify-center" : "flex-col md:flex-row")}>
       {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
 
       {!isLoginPage && (
-        <aside className="hidden md:flex w-64 shrink-0 flex-col bg-foreground text-background">
-          <div className="p-6 border-b border-background/10">
-            <div className="font-display text-2xl">B&amp;B</div>
-            <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Espace - Admin</div>
+        <>
+          {/* Header Mobile */}
+          <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4 h-16 z-30">
+            <button onClick={() => setIsMenuOpen(true)}><Menu className="h-6 w-6" /></button>
+            <div className="font-display text-xl">B&B Admin</div>
+            <div className="w-6" />
           </div>
-          
-          <nav className="flex-1 p-4 space-y-1">
-            {nav.map((n) => {
-              const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
-              return (
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-sm",
-                    active ? "bg-background/10 text-background" : "text-background/70 hover:bg-background/5"
-                  )}
-                >
-                  <n.icon className="h-4 w-4" /> {n.label}
-                </Link>
-              );
-            })}
-          </nav>
 
-          <div className="p-4 border-t border-background/10 space-y-2">
-            <Link to="/" className="flex items-center gap-3 px-4 py-2 text-xs text-background/70 hover:text-background">
-              <ExternalLink className="h-3.5 w-3.5" /> Voir le site
-            </Link>
-            <div className="px-4 text-[0.65rem] uppercase tracking-wider opacity-60 truncate">
-              experience@bnb-villa.com
+          {/* Menu Mobile Overlay */}
+          {isMenuOpen && (
+            <div className="md:hidden fixed inset-0 z-[400] bg-foreground text-background p-6 flex flex-col">
+              <div className="flex justify-between items-center mb-10">
+                <span className="font-display text-xl">Menu</span>
+                <button onClick={() => setIsMenuOpen(false)}><X size={32} /></button>
+              </div>
+              <nav className="flex-1 space-y-6">
+                {nav.map(n => (
+                  <Link key={n.to} to={n.to} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 text-xl">
+                    <n.icon /> {n.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="border-t border-background/20 pt-6 space-y-4">
+                <button onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }} className="flex items-center gap-4 text-lg"><KeyRound size={20} /> Mot de passe</button>
+                <button onClick={handleLogout} className="flex items-center gap-4 text-lg text-red-400"><LogOut size={20} /> Déconnexion</button>
+              </div>
             </div>
-            {/* ── Modifier mot de passe ── */}
-            <button
-              onClick={() => setShowChangePwd(true)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-background/70 hover:text-background hover:bg-background/5 transition rounded-sm"
-            >
-              <KeyRound className="h-4 w-4" /> Modifier mot de passe
-            </button>
-            <button
-              onClick={() => { logout(); navigate({ to: "/" }); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm bg-background text-foreground hover:opacity-90 transition rounded-sm"
-            >
-              <LogOut className="h-4 w-4" /> Déconnexion
-            </button>
-          </div>
-        </aside>
+          )}
+
+          {/* Sidebar Desktop */}
+          <aside className="hidden md:flex w-64 flex-col bg-foreground text-background min-h-screen shrink-0">
+            <div className="p-6 border-b border-background/10">
+              <div className="font-display text-2xl">B&B</div>
+              <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Espace Admin</div>
+            </div>
+            <nav className="flex-1 p-4 space-y-1">
+              {nav.map(n => (
+                <Link key={n.to} to={n.to} className={cn("flex items-center gap-3 px-4 py-3 text-sm rounded-sm", pathname === n.to ? "bg-background/10" : "hover:bg-background/5")}>
+                  <n.icon size={16} /> {n.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="p-4 border-t border-background/10 space-y-2">
+              <button onClick={() => setShowChangePwd(true)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-background/5"><KeyRound size={16} /> Mot de passe</button>
+              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm bg-background text-foreground"><LogOut size={16} /> Déconnexion</button>
+            </div>
+          </aside>
+        </>
       )}
 
-      <div className="flex-1 min-w-0">
-        {!isLoginPage && (
-          <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4">
-            <div className="font-display text-xl">B&amp;B Admin</div>
-            <button onClick={() => { logout(); navigate({ to: "/" }); }} className="text-xs flex items-center gap-2">
-              <LogOut className="h-4 w-4" /> Sortir
-            </button>
-          </div>
-        )}
-        
-        <main className={cn("p-6 md:p-10", !isLoginPage && "max-w-7xl")}>
-          <Outlet />
-        </main>
-      </div>
+      <main className="flex-1 overflow-auto p-4 md:p-10">
+        <Outlet />
+      </main>
     </div>
   );
 }
 
 export function AdminLayout() {
-  return (
-    <AdminAuthProvider>
-      <Shell />
-    </AdminAuthProvider>
-  );
+  return <AdminAuthProvider><Shell /></AdminAuthProvider>;
 }
