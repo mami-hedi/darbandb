@@ -15,7 +15,7 @@ export class Admin extends Model {
 export const initAdminModel = (sequelize: Sequelize) => {
   Admin.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    email: { type: DataTypes.STRING, unique: true, allowNull: false },
+    email: { type: DataTypes.STRING, unique: 'admins_email_unique', allowNull: false },
     password: { type: DataTypes.STRING, allowNull: false },
   }, {
     sequelize,
