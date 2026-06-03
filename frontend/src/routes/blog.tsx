@@ -37,10 +37,10 @@ function BlogCard({ post, index, lang }: { post: any; index: number; lang: strin
 
   return (
     <div
-      ref={ref}
-      className="sticky"
-      style={{ top: `${80 + index * 24}px` }} // Décalage en cascade pour l'effet stack
-    >
+  ref={ref}
+  className="sticky"
+  style={{ top: `${80 + index * 24}px`, zIndex: index + 1 }}
+>
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}

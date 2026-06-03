@@ -86,7 +86,7 @@ export const dict = {
       disclaimer: "L'abus d'alcool est dangereux pour la santé."
     },
     pricing: { eyebrow: "Tarifs", title: "Un prix pour la villa entière", from: "À partir de", price: "450 €", per: "/ nuit · villa entière", note: "3 nuits minimum · Petit-déjeuner inclus", cta: "Demander une date" },
-    blogTitle: "Journal", blogSub: "Récits, adresses et inspirations.",
+    blogTitle: "Blog", blogSub: "Récits, adresses et inspirations.",
     galleryTitle: "Galerie", gallerySub: "Lumière, matières, paysage.",
     
     // SECTION CONTACT CORRIGÉE (Services & Support sans dates de réservation)
@@ -272,7 +272,7 @@ philosophy: {
       disclaimer: "Alcohol abuse is dangerous for your health."
     },
     pricing: { eyebrow: "Rates", title: "One price for the whole villa", from: "From", price: "€450", per: "/ night · whole villa", note: "3-night minimum · Breakfast included", cta: "Request dates" },
-    blogTitle: "Journal", blogSub: "Stories, places, inspirations.",
+    blogTitle: "Blog", blogSub: "Stories, places, inspirations.",
     galleryTitle: "Gallery", gallerySub: "Light, materials, landscape.",
     
     // CONTACT TRANSLATION

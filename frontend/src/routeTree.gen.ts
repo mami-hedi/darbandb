@@ -24,7 +24,7 @@ import { Route as SuitesSuiteJasminRouteImport } from './routes/suites/suite-jas
 import { Route as SuitesSuiteAzurRouteImport } from './routes/suites/suite-azur'
 import { Route as SuitesSuiteAmbreRouteImport } from './routes/suites/suite-ambre'
 import { Route as SuitesSuiteIdRouteImport } from './routes/suites.$suiteId'
-import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BlogSlugRouteImport } from './routes/blog_.$slug'
 import { Route as AdminTarifsRouteImport } from './routes/admin.tarifs'
 import { Route as AdminReservationsRouteImport } from './routes/admin.reservations'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -109,9 +109,9 @@ const SuitesSuiteIdRoute = SuitesSuiteIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => BlogRoute,
+  id: '/blog_/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTarifsRoute = AdminTarifsRouteImport.update({
   id: '/tarifs',
@@ -153,7 +153,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/availability': typeof AvailabilityRoute
-  '/blog': typeof BlogRouteWithChildren
+  '/blog': typeof BlogRoute
   '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
@@ -177,7 +177,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/availability': typeof AvailabilityRoute
-  '/blog': typeof BlogRouteWithChildren
+  '/blog': typeof BlogRoute
   '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
@@ -203,7 +203,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/availability': typeof AvailabilityRoute
-  '/blog': typeof BlogRouteWithChildren
+  '/blog': typeof BlogRoute
   '/booking': typeof BookingRoute
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
@@ -216,7 +216,7 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/reservations': typeof AdminReservationsRoute
   '/admin/tarifs': typeof AdminTarifsRoute
-  '/blog/$slug': typeof BlogSlugRoute
+  '/blog_/$slug': typeof BlogSlugRoute
   '/suites/$suiteId': typeof SuitesSuiteIdRoute
   '/suites/suite-ambre': typeof SuitesSuiteAmbreRoute
   '/suites/suite-azur': typeof SuitesSuiteAzurRoute
@@ -292,7 +292,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/reservations'
     | '/admin/tarifs'
-    | '/blog/$slug'
+    | '/blog_/$slug'
     | '/suites/$suiteId'
     | '/suites/suite-ambre'
     | '/suites/suite-azur'
@@ -305,12 +305,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AvailabilityRoute: typeof AvailabilityRoute
-  BlogRoute: typeof BlogRouteWithChildren
+  BlogRoute: typeof BlogRoute
   BookingRoute: typeof BookingRoute
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   OrderClientRoute: typeof OrderClientRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   SuitesSuiteIdRoute: typeof SuitesSuiteIdRoute
   SuitesSuiteAmbreRoute: typeof SuitesSuiteAmbreRoute
   SuitesSuiteAzurRoute: typeof SuitesSuiteAzurRoute
@@ -425,12 +426,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuitesSuiteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/$slug'
+    '/blog_/$slug': {
+      id: '/blog_/$slug'
+      path: '/blog/$slug'
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
-      parentRoute: typeof BlogRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/tarifs': {
       id: '/admin/tarifs'
@@ -508,26 +509,17 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface BlogRouteChildren {
-  BlogSlugRoute: typeof BlogSlugRoute
-}
-
-const BlogRouteChildren: BlogRouteChildren = {
-  BlogSlugRoute: BlogSlugRoute,
-}
-
-const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AvailabilityRoute: AvailabilityRoute,
-  BlogRoute: BlogRouteWithChildren,
+  BlogRoute: BlogRoute,
   BookingRoute: BookingRoute,
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   OrderClientRoute: OrderClientRoute,
+  BlogSlugRoute: BlogSlugRoute,
   SuitesSuiteIdRoute: SuitesSuiteIdRoute,
   SuitesSuiteAmbreRoute: SuitesSuiteAmbreRoute,
   SuitesSuiteAzurRoute: SuitesSuiteAzurRoute,
