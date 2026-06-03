@@ -1,28 +1,25 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { BlogPost } from '../models/blogModel';
 
 const router = Router();
 
-// ── Configuation Multer ──────────────────────────────────────────────────────
-// Dossier de destination : src/assets/blogImages (créé automatiquement)
-const uploadDir = path.join(__dirname, '..', 'assets', 'blogImages');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// ── Configuration Cloudinary ─────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    // Nom unique : timestamp + extension d'origine
-    const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueName = `blog-${Date.now()}${ext}`;
-    cb(null, uniqueName);
-  },
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'darbandb/blog',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1200, crop: 'limit' }],
+  } as any,
 });
 
 const fileFilter = (_req: any, file: multer.File, cb: multer.FileFilterCallback) => {
@@ -42,13 +39,13 @@ const upload = multer({
 
 // ── Route upload image ────────────────────────────────────────────────────────
 // POST /api/blog/upload-image
-// Retourne : { path: "/assets/blogImages/blog-1234567890.jpg" }
+// Retourne : { path: "https://res.cloudinary.com/..." }
 router.post('/upload-image', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'Aucun fichier reçu.' });
   }
-  // Chemin accessible depuis le frontend (servi comme fichier statique)
-  const publicPath = `/assets/blogImages/${req.file.filename}`;
+  // Cloudinary retourne l'URL publique dans req.file.path
+  const publicPath = (req.file as any).path;
   res.json({ path: publicPath });
 });
 
@@ -100,16 +97,20 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/blog/:id — Supprimer un article
+// DELETE /api/blog/:id — Supprimer un article + image Cloudinary
 router.delete('/:id', async (req, res) => {
   try {
     const post = await BlogPost.findByPk(req.params.id);
     if (!post) return res.status(404).json({ message: 'Article introuvable' });
 
-    // Supprimer l'image locale si elle est dans assets/blogImages
-    if (post.cover && post.cover.startsWith('/assets/blogImages/')) {
-      const imgPath = path.join(__dirname, '..', post.cover);
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    // Supprimer l'image sur Cloudinary si l'URL vient de Cloudinary
+    if (post.cover && post.cover.includes('cloudinary.com')) {
+      // Extraire le public_id depuis l'URL : "darbandb/blog/nom-fichier"
+      const matches = post.cover.match(/darbandb\/blog\/([^/.]+)/);
+      if (matches) {
+        const publicId = `darbandb/blog/${matches[1]}`;
+        await cloudinary.uploader.destroy(publicId);
+      }
     }
 
     await post.destroy();
