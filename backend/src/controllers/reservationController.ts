@@ -18,6 +18,7 @@ export class ReservationController {
     this.getClients              = this.getClients.bind(this);
     this.getDashboardStats       = this.getDashboardStats.bind(this);
     this.getPricePreview         = this.getPricePreview.bind(this);
+    this.saveInspection          = this.saveInspection.bind(this); // NEW
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -54,7 +55,6 @@ export class ReservationController {
       }
 
       const totalPrice  = await this.calculateTotalPrice(checkInDate, checkOutDate);
-      // Si depositAmount fourni on l'utilise, sinon 30% arrondi
       const deposit = depositAmount != null
         ? parseFloat(depositAmount)
         : Math.round(totalPrice * 0.3 * 100) / 100;
@@ -74,6 +74,7 @@ export class ReservationController {
         depositPaid: false,
         depositPaidAt: null,
         depositNotes: null,
+        inspection: null,
       });
 
       try { await this.emailService.sendConfirmationEmail(reservation); }
@@ -112,7 +113,6 @@ export class ReservationController {
 
   // ─────────────────────────────────────────────────────────────
   // GET /reservations/price-preview?checkIn=&checkOut=
-  // Retourne le détail nuit par nuit + total (utile pour le formulaire)
   // ─────────────────────────────────────────────────────────────
   async getPricePreview(req: Request, res: Response) {
     try {
@@ -170,7 +170,6 @@ export class ReservationController {
 
       const oldStatus = reservation.status;
 
-      // Recalcul prix si les dates changent
       if (updateData.checkInDate || updateData.checkOutDate) {
         const nights = this.calculateNights(
           updateData.checkInDate  || reservation.checkInDate,
@@ -181,7 +180,6 @@ export class ReservationController {
             updateData.checkInDate  || reservation.checkInDate,
             updateData.checkOutDate || reservation.checkOutDate,
           );
-          // Recalcul de l'acompte suggéré (si non surchargé explicitement)
           if (updateData.depositAmount == null) {
             updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
           }
@@ -220,7 +218,7 @@ export class ReservationController {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PATCH /reservations/:id/deposit  — NEW
+  // PATCH /reservations/:id/deposit
   // Body : { depositAmount?, depositPaid, depositNotes? }
   // ─────────────────────────────────────────────────────────────
   async updateDeposit(req: Request, res: Response) {
@@ -242,11 +240,40 @@ export class ReservationController {
         patch.depositPaid   = Boolean(depositPaid);
         patch.depositPaidAt = depositPaid ? new Date() : null;
       }
-      if (depositNotes  !== undefined) patch.depositNotes = depositNotes;
+      if (depositNotes !== undefined) patch.depositNotes = depositNotes;
 
       await reservation.update(patch);
       return res.json({ success: true, data: reservation });
     } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PATCH /reservations/:id/inspection  — NEW
+  // Body : { inspection: Record<string, { status, note }> }
+  // ─────────────────────────────────────────────────────────────
+  async saveInspection(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { inspection } = req.body;
+
+      if (!inspection || typeof inspection !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: "Le champ 'inspection' est requis et doit être un objet.",
+        });
+      }
+
+      const reservation = await ReservationModel.findByPk(id);
+      if (!reservation) {
+        return res.status(404).json({ success: false, error: 'Réservation non trouvée.' });
+      }
+
+      await reservation.update({ inspection });
+      return res.json({ success: true, data: reservation });
+    } catch (error: any) {
+      console.error('Erreur saveInspection:', error);
       return res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -319,25 +346,24 @@ export class ReservationController {
         raw: true,
       });
 
-      // Acomptes en attente
       const pendingDeposits = await ReservationModel.count({
         where: {
-          status:       { [Op.in]: ['pending', 'confirmed'] },
-          depositPaid:  false,
+          status:        { [Op.in]: ['pending', 'confirmed'] },
+          depositPaid:   false,
           depositAmount: { [Op.gt]: 0 },
         },
       });
       const pendingDepositTotal = await ReservationModel.sum('depositAmount', {
         where: {
-          status:      { [Op.in]: ['pending', 'confirmed'] },
-          depositPaid: false,
+          status:        { [Op.in]: ['pending', 'confirmed'] },
+          depositPaid:   false,
           depositAmount: { [Op.gt]: 0 },
         },
       });
 
-      const totalRevenue  = await ReservationModel.sum('totalPrice',  { where: { status: 'confirmed' } });
-      const totalClients  = await ReservationModel.count({ distinct: true, col: 'email' });
-      const upcoming      = await ReservationModel.count({
+      const totalRevenue = await ReservationModel.sum('totalPrice',  { where: { status: 'confirmed' } });
+      const totalClients = await ReservationModel.count({ distinct: true, col: 'email' });
+      const upcoming     = await ReservationModel.count({
         where: { status: 'confirmed', checkInDate: { [Op.gte]: new Date() } },
       });
 
@@ -356,8 +382,8 @@ export class ReservationController {
       return res.json({
         success: true,
         data: {
-          revenue:  formattedRevenue.length  > 0 ? formattedRevenue  : [{ m: 'Aucun', revenue: 0, nights: 0 }],
-          sources:  formattedSources.length  > 0 ? formattedSources  : [{ name: 'Aucune', value: 0 }],
+          revenue: formattedRevenue.length > 0 ? formattedRevenue : [{ m: 'Aucun', revenue: 0, nights: 0 }],
+          sources: formattedSources.length > 0 ? formattedSources : [{ name: 'Aucune', value: 0 }],
           totals: {
             revenue:             totalRevenue  || 0,
             clients:             totalClients  || 0,

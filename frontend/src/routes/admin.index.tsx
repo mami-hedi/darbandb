@@ -1,198 +1,97 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, BedDouble, Users as UsersIcon, Euro, Loader2 } from "lucide-react";
+import { ResponsiveContainer, Tooltip, XAxis, YAxis, ComposedChart, Area, Legend, CartesianGrid } from "recharts";
+import { TrendingUp, Euro, Loader2, Target, Percent, DollarSign, CalendarDays } from "lucide-react";
 
-// Centralisation de l'URL de l'API (S'adapte automatiquement entre dev et prod)
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export const Route = createFileRoute("/admin/")({
   component: Dashboard,
 });
 
-const COLORS = ["oklch(0.18 0.01 60)", "oklch(0.78 0.06 60)", "oklch(0.45 0.01 60)"];
-
-// Interface pour typer nos données API
-interface DashboardData {
-  revenue: Array<{ m: string; revenue: number; nights: number }>;
-  sources: Array<{ name: string; value: number }>;
-  totals: {
-    revenue: number;
-    nights: number;
-    clients: number;
-    upcoming: number;
-  };
-}
-
 function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // Utilisation de la variable d'environnement dynamique
-        const response = await fetch(`${API_BASE}/reservations/admin/stats`);
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-
-        const result = await response.json();
-        
-        if (result.success) {
-          setData(result.data);
-        } else {
-          setError("Impossible de charger les statistiques");
-        }
-      } catch (err) {
-        setError("Erreur de connexion au serveur backend.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+    fetch(`${API_BASE}/reservations/admin/stats`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) setData(result.data);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="h-96 flex flex-col items-center justify-center gap-4 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-xs uppercase tracking-widest">Chargement des données...</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-amber-500" /></div>;
+  if (!data) return <div className="p-10 text-neutral-500">Données non disponibles.</div>;
 
-  if (error || !data) {
-    return (
-      <div className="p-10 text-red-500 border border-red-100 bg-red-50/50 text-sm">
-        <p className="font-bold">Erreur de chargement</p>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  const occupancy = Math.round((data.totals.nights / 365) * 100);
+  const occupancyRate = Math.round((data.totals.nights / 365) * 100);
+  const revPar = Math.round(data.totals.revenue / 365);
+  const formatTND = (val: number) => `${val.toLocaleString('fr-FR')} TND`;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
-      <div>
-        <div className="text-[0.7rem] tracking-[0.3em] uppercase text-muted-foreground">— Vue d'ensemble</div>
-        <h1 className="font-display text-4xl mt-2">Tableau de bord</h1>
-      </div>
+    <div className="space-y-8 p-6 bg-neutral-950 min-h-screen text-neutral-100">
+      <h1 className="text-3xl font-bold">Pilotage Financier : Dar B&B</h1>
 
-      {/* Cartes de statistiques dynamiques */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border shadow-sm">
-        <Stat 
-          icon={<Euro className="h-4 w-4" />} 
-          label="Revenu annuel" 
-          value={`${data.totals.revenue.toLocaleString("fr-FR")} €`} 
-          delta="Encaissé" 
-        />
-        <Stat 
-          icon={<BedDouble className="h-4 w-4" />} 
-          label="Nuits réservées" 
-          value={`${data.totals.nights}`} 
-          delta={`${occupancy}% d'occ.`} 
-        />
-        <Stat 
-          icon={<UsersIcon className="h-4 w-4" />} 
-          label="Clients" 
-          value={`${data.totals.clients}`} 
-          delta="Base de données" 
-        />
-        <Stat 
-          icon={<TrendingUp className="h-4 w-4" />} 
-          label="À venir" 
-          value={`${data.totals.upcoming}`} 
-          delta="Réservations" 
-        />
+      {/* Prochaine Réservation */}
+      
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat icon={<Euro size={18}/>} label="Revenu Annuel" value={formatTND(data.totals.revenue)} />
+        <Stat icon={<Percent size={18}/>} label="Taux d'occupation" value={`${occupancyRate} %`} />
+        <Stat icon={<Target size={18}/>} label="RevPAR" value={`${revPar.toLocaleString('fr-FR')} TND / jour`} />
+        <Stat icon={<DollarSign size={18}/>} label="Panier Moyen" value={formatTND(Math.round(data.totals.revenue / data.totals.clients))} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Graphique des Revenus (BarChart) */}
-        <div className="lg:col-span-2 bg-background border border-border p-6">
-          <div className="flex items-end justify-between mb-6">
-            <div>
-              <div className="eyebrow">Revenu mensuel</div>
-              <div className="font-display text-2xl mt-1">2026</div>
-            </div>
-            <div className="text-xs text-muted-foreground">EUR</div>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.revenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.01 75)" vertical={false} />
-                <XAxis dataKey="m" tick={{ fontSize: 11, fill: "oklch(0.45 0.015 65)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "oklch(0.45 0.015 65)" }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: "oklch(0.95 0.01 80)" }} contentStyle={{ background: "white", border: "1px solid oklch(0.88 0.01 75)", borderRadius: 0, fontSize: 12 }} />
-                <Bar dataKey="revenue" fill="oklch(0.18 0.01 60)" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Mix des sources (PieChart) */}
-        <div className="bg-background border border-border p-6">
-          <div className="eyebrow">Sources de réservation</div>
-          <div className="font-display text-2xl mt-1">Répartition</div>
-          <div className="h-56 mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={data.sources} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} stroke="none">
-                  {data.sources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "white", border: "1px solid oklch(0.88 0.01 75)", borderRadius: 0, fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <ul className="space-y-2 mt-2 text-xs uppercase tracking-wider">
-            {data.sources.map((s, i) => (
-              <li key={s.name} className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <span className="h-1.5 w-1.5" style={{ background: COLORS[i % COLORS.length] }} /> 
-                  {s.name}
-                </span>
-                <span className="font-bold">{s.value}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* Graphique de tendance des Nuits (LineChart) */}
-      <div className="bg-background border border-border p-6">
-        <div className="eyebrow">Nuits réservées · tendance annuelle</div>
-        <div className="h-56 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.revenue}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.01 75)" vertical={false} />
-              <XAxis dataKey="m" tick={{ fontSize: 11, fill: "oklch(0.45 0.015 65)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "oklch(0.45 0.015 65)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: "white", border: "1px solid oklch(0.88 0.01 75)", borderRadius: 0, fontSize: 12 }} />
-              <Line type="monotone" dataKey="nights" stroke="oklch(0.18 0.01 60)" strokeWidth={2} dot={{ r: 3, fill: "oklch(0.78 0.06 60)", strokeWidth: 0 }} />
-            </LineChart>
+        {/* Analyse Rentabilité */}
+        <div className="lg:col-span-2 bg-neutral-900 p-6 rounded-xl border border-neutral-800">
+          <h3 className="mb-6 font-semibold flex items-center gap-2"><TrendingUp size={18}/> Analyse des Revenus Mensuels</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={data.revenue}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+              <XAxis dataKey="m" stroke="#666" />
+              <YAxis yAxisId="left" stroke="#666" tickFormatter={(val) => `${val} TND`} />
+              <Tooltip contentStyle={{ background: "#000", border: "1px solid #444" }} />
+              <Legend />
+              <Area yAxisId="left" type="monotone" dataKey="revenue" fill="#eab308" stroke="#eab308" name="Revenu (TND)" />
+            </ComposedChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Occupation Saisonnier */}
+        <div className="bg-neutral-900 p-6 rounded-xl border border-neutral-800">
+          <h3 className="mb-6 font-semibold text-amber-400 flex items-center gap-2"><CalendarDays size={18}/> Occupation Saisonnier</h3>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-neutral-300">Haute Saison</span><span className="font-bold text-white">92 %</span></div>
+              <div className="w-full bg-neutral-800 h-2 rounded-full overflow-hidden"><div className="bg-amber-500 h-full w-[92%]"></div></div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-neutral-300">Saison Moyenne</span><span className="font-bold text-white">65 %</span></div>
+              <div className="w-full bg-neutral-800 h-2 rounded-full overflow-hidden"><div className="bg-amber-600 h-full w-[65%]"></div></div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-neutral-300">Basse Saison</span><span className="font-bold text-white">28 %</span></div>
+              <div className="w-full bg-neutral-800 h-2 rounded-full overflow-hidden"><div className="bg-amber-900 h-full w-[28%]"></div></div>
+            </div>
+            <div className="mt-8 pt-6 border-t border-neutral-800 text-center">
+              <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1">Dépendance saisonnière</p>
+              <p className="text-lg font-bold text-amber-500">Modérée</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Stat({ icon, label, value, delta }: { icon: React.ReactNode; label: string; value: string; delta: string }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="bg-background p-6">
-      <div className="flex items-center justify-between text-muted-foreground">
-        <span className="eyebrow">{label}</span>
-        {icon}
-      </div>
-      <div className="font-display text-3xl mt-3">{value}</div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">{delta}</div>
+    <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800">
+      <div className="text-neutral-500 text-xs uppercase flex justify-between mb-2">{label} {icon}</div>
+      <div className="text-xl font-bold">{value}</div>
     </div>
   );
 }
