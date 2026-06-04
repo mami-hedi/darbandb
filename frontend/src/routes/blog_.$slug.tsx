@@ -39,7 +39,7 @@ export const Route = createFileRoute("/blog_/$slug")({
 
     // Utilise metaTitle si défini, sinon title
     const metaTitle =
-      getMetaString(post.metaTitle) || getMetaString(post.title) || "Journal";
+      getMetaString(post.metaTitle) || getMetaString(post.title) || "Blog";
     const metaDescription =
       getMetaString(post.metaDescription) || getMetaString(post.excerpt) || "";
     const imageAlt = getMetaString(post.imageAlt) || metaTitle;
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/blog_/$slug")({
       <div className="container-luxe py-32 text-center">
         <h1 className="font-display text-4xl">Article introuvable</h1>
         <Link to="/blog" className="mt-6 inline-block underline">
-          ← Retour au journal
+          ← Retour au Blog
         </Link>
       </div>
     </SiteLayout>
@@ -103,7 +103,7 @@ function Post() {
             to="/blog"
             className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-stone-400 hover:text-stone-900 transition-colors font-bold"
           >
-            <ArrowLeft size={14} /> Journal
+            <ArrowLeft size={14} /> Blog
           </Link>
         </div>
 
