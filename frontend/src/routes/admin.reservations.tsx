@@ -351,7 +351,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
             <section>
               <h3 className={sectionTitle}>Tarif</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                <Field label={loadingPrice ? "Total du séjour (calcul...)" : pricePreview ? `Total calculé — ${pricePreview.nights} nuit${pricePreview.nights > 1 ? "s" : ""}` : "Total du séjour (€)"}>
+                <Field label={loadingPrice ? "Total du séjour (calcul...)" : pricePreview ? `Total calculé — ${pricePreview.nights} nuit${pricePreview.nights > 1 ? "s" : ""}` : "Total du séjour (TND)"}>
                   <div className="relative">
                     <input
                       type="number"
@@ -363,7 +363,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                       placeholder="Calculé automatiquement"
                       readOnly={loadingPrice}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">€</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">TND</span>
                     {loadingPrice && (
                       <span className="absolute left-3 top-1/2 -translate-y-1/2">
                         <span className="block w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -385,7 +385,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
             <section>
               <h3 className={sectionTitle}>Acompte</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label={pricePreview ? `Montant (suggéré : ${pricePreview.suggestedDeposit} €)` : "Montant de l'acompte"}>
+                <Field label={pricePreview ? `Montant (suggéré : ${pricePreview.suggestedDeposit} TND)` : "Montant de l'acompte"}>
                   <div className="relative">
                     <input
                       type="number" step="0.01" min="0"
@@ -394,7 +394,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                       onChange={e => setForm({...form, depositAmount: e.target.value})}
                       placeholder={pricePreview ? String(pricePreview.suggestedDeposit) : "0.00"}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">TND</span>
                   </div>
                 </Field>
                 <Field label="Encaissé">
@@ -446,7 +446,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               {!loadingPrice && form.totalPrice && (
                 <div>
                   {pricePreview && <span className="text-xs text-muted-foreground">{pricePreview.nights} nuit{pricePreview.nights > 1 ? "s" : ""} · </span>}
-                  <span className="text-xl font-bold text-primary">{Number(form.totalPrice).toFixed(2)} €</span>
+                  <span className="text-xl font-bold text-primary">{Number(form.totalPrice).toFixed(2)} TND</span>
                 </div>
               )}
               {!loadingPrice && !form.totalPrice && !datesOk && (
@@ -497,7 +497,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                 {/* Total */}
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center shrink-0">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Total du séjour</p>
-                  <p className="text-4xl font-bold text-primary tabular-nums">{pricePreview.total} €</p>
+                  <p className="text-4xl font-bold text-primary tabular-nums">{pricePreview.total} TND</p>
                   <p className="text-xs text-muted-foreground mt-1.5">
                     {pricePreview.nights} nuit{pricePreview.nights > 1 ? "s" : ""}
                   </p>
@@ -509,7 +509,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acompte 30%</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Montant suggéré</p>
                   </div>
-                  <span className="text-lg font-bold">{pricePreview.suggestedDeposit} €</span>
+                  <span className="text-lg font-bold">{pricePreview.suggestedDeposit} TND</span>
                 </div>
 
                 {/* Détail nuit par nuit */}
@@ -523,7 +523,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                           {b.isCustom && <span className="ml-1 text-[9px] bg-amber-500/10 text-amber-600 px-1 rounded">spécial</span>}
                         </span>
                         <span className={cn("text-xs font-semibold tabular-nums", b.isCustom ? "text-amber-600" : "text-foreground")}>
-                          {b.price} €
+                          {b.price} TND
                         </span>
                       </div>
                     ))}
@@ -537,7 +537,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               <div className="flex-1 flex flex-col gap-4 justify-start pt-2">
                 <div className="bg-muted/40 border border-border rounded-xl p-4 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Total actuel</p>
-                  <p className="text-4xl font-bold text-primary tabular-nums">{Number(reservation!.totalPrice).toFixed(2)} €</p>
+                  <p className="text-4xl font-bold text-primary tabular-nums">{Number(reservation!.totalPrice).toFixed(2)} TND</p>
                   <p className="text-xs text-muted-foreground mt-1.5">Modifiez les dates pour recalculer</p>
                 </div>
                 <div className="bg-background border border-border rounded-lg p-3 flex justify-between items-center">
@@ -545,7 +545,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acompte</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{reservation!.depositPaid ? "✓ Encaissé" : "○ Non encaissé"}</p>
                   </div>
-                  <span className="text-lg font-bold">{Number(reservation!.depositAmount).toFixed(2)} €</span>
+                  <span className="text-lg font-bold">{Number(reservation!.depositAmount).toFixed(2)} TND</span>
                 </div>
               </div>
             )}
@@ -608,7 +608,7 @@ function DepositBadge({ r }: { r: Reservation }) {
   if (!r.depositAmount || Number(r.depositAmount) === 0) return <span className="text-xs text-muted-foreground">—</span>;
   return (
     <div className="space-y-0.5">
-      <div className="text-sm font-medium">{Number(r.depositAmount).toFixed(2)} €</div>
+      <div className="text-sm font-medium">{Number(r.depositAmount).toFixed(2)} TND</div>
       {r.depositPaid ? (
         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
           ✓ Payé{r.depositPaidAt && <span className="opacity-70 ml-0.5">{new Date(r.depositPaidAt).toLocaleDateString("fr-FR")}</span>}
@@ -647,7 +647,7 @@ function ReservationRow({ reservation: r, onUpdate, onDeposit, onEdit }: {
           <span className="font-medium">{new Date(r.checkOutDate).toLocaleDateString("fr-FR")}</span>
         </td>
         <td className="p-4 text-center font-medium">{r.numberOfGuests}</td>
-        <td className="p-4 font-semibold">{Number(r.totalPrice).toFixed(2)} €</td>
+        <td className="p-4 font-semibold">{Number(r.totalPrice).toFixed(2)} TND</td>
         <td className="p-4">
           <div className="space-y-1">
             <DepositBadge r={r} />
@@ -703,7 +703,7 @@ function ReservationCardMobile({ reservation: r, onUpdate, onDeposit, onEdit }: 
           <span>👥 {r.numberOfGuests} pers.</span>
         </div>
         <div className="text-sm font-bold pt-1">
-          Total : <span className="text-primary">{Number(r.totalPrice).toFixed(2)} €</span>
+          Total : <span className="text-primary">{Number(r.totalPrice).toFixed(2)} TND</span>
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-border/60">
           <DepositBadge r={r} />
@@ -755,7 +755,7 @@ function DepositInlinePanel({ r, onDeposit, onClose }: {
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gestion de l'acompte</p>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[10px] text-muted-foreground block mb-1">Montant (€)</label>
+          <label className="text-[10px] text-muted-foreground block mb-1">Montant (TND)</label>
           <input type="number" step="0.01" min="0" className="w-full border border-border rounded px-2 py-1.5 text-sm bg-background" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
         <div className="flex items-end pb-1.5">

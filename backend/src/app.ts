@@ -45,7 +45,7 @@ app.use(cors({
     else callback(new Error('CORS Policy: Origin not allowed'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
 
 // Routes publiques et statiques

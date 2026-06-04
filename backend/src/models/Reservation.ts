@@ -1,5 +1,10 @@
 import { Model, DataTypes, Sequelize } from 'sequelize';
 
+type AreaStatus = {
+  status: 'pending' | 'ok' | 'issue';
+  note: string;
+};
+
 export class Reservation extends Model {
   public id!: number;
   public refNumber!: string;
@@ -15,11 +20,14 @@ export class Reservation extends Model {
   public source!: string;
   public status!: 'pending' | 'confirmed' | 'cancelled';
 
-  // ── Nouveaux champs : paiement avance ──
-  public depositAmount!: number;          // Montant de l'acompte demandé
-  public depositPaid!: boolean;           // Acompte reçu ou non
-  public depositPaidAt?: Date;            // Date de réception de l'acompte
-  public depositNotes?: string;           // Notes libres sur le paiement
+  // ── Paiement / acompte ──
+  public depositAmount!: number;
+  public depositPaid!: boolean;
+  public depositPaidAt?: Date;
+  public depositNotes?: string;
+
+  // ── Inspection checkout ──
+  public inspection?: Record<string, AreaStatus>;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -34,10 +42,10 @@ export const initReservationModel = (sequelize: Sequelize) => {
         autoIncrement: true,
       },
       refNumber: {
-  type: DataTypes.STRING,
-  unique: 'reservations_refNumber_unique',  // nom fixe
-  allowNull: false,
-},
+        type: DataTypes.STRING,
+        unique: 'reservations_refNumber_unique',
+        allowNull: false,
+      },
       firstName: { type: DataTypes.STRING, allowNull: false },
       lastName:  { type: DataTypes.STRING, allowNull: false },
       email:     { type: DataTypes.STRING, allowNull: false },
@@ -69,23 +77,31 @@ export const initReservationModel = (sequelize: Sequelize) => {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'Montant de l\'acompte demandé (ex : 30% du totalPrice)',
+        comment: "Montant de l'acompte demandé (ex : 30% du totalPrice)",
       },
       depositPaid: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-        comment: 'Vrai si l\'acompte a été encaissé',
+        comment: "Vrai si l'acompte a été encaissé",
       },
       depositPaidAt: {
         type: DataTypes.DATE,
         allowNull: true,
-        comment: 'Date de réception de l\'acompte',
+        comment: "Date de réception de l'acompte",
       },
       depositNotes: {
         type: DataTypes.TEXT,
         allowNull: true,
         comment: 'Notes libres sur le mode de paiement, référence virement, etc.',
+      },
+
+      // ── Inspection checkout ──
+      inspection: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        comment: 'Résultat inspection checkout par zone (Suite 4, Cuisine, Piscine, etc.)',
       },
     },
     {
