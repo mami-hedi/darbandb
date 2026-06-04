@@ -167,7 +167,7 @@ function Contact() {
                       setFormData({ ...formData, phone: e.target.value })
                     }
                     className={inputCls}
-                    placeholder="+216 -- --- ---"
+                    placeholder="---- -- --- ---"
                   />
                 </Field>
               </div>

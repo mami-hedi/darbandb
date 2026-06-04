@@ -66,24 +66,24 @@ function BlogCard({ post, index, lang }: { post: any; index: number; lang: strin
 
             {/* IMAGE — alterne gauche/droite selon l'index */}
             <div
-              className={`relative overflow-hidden bg-stone-100 ${
-                index % 2 === 1 ? "md:order-2" : ""
-              }`}
-            >
-              <motion.div
-                className="absolute inset-0"
-                style={{ y: isMobile ? 0 : imageY }}
-              >
-                <img
-                  src={getImageUrl(post.cover)}
-                  alt={title}
-                  className="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                  style={{
-                    height: isMobile ? "100%" : "115%",
-                    marginTop: isMobile ? "0" : "-7.5%",
-                  }}
-                />
-              </motion.div>
+  className={`relative overflow-hidden bg-stone-100 ${
+    index % 2 === 1 ? "md:order-2" : ""
+  }`}
+>
+  {/* On ajoute une hauteur minimale explicite sur mobile */}
+  <div className="h-[250px] md:h-full w-full relative">
+    <motion.div
+      className="absolute inset-0"
+      style={{ y: isMobile ? 0 : imageY }}
+    >
+      <img
+        src={getImageUrl(post.cover)}
+        alt={title}
+        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+        // On supprime les styles inline complexes qui causaient des conflits
+      />
+    </motion.div>
+  </div>
 
               {/* Badge catégorie sur l'image */}
               <div className="absolute top-6 left-6 z-10">
