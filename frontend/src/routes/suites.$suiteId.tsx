@@ -5,11 +5,11 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 import { useEffect } from "react";
 
-// Import de tes assets d'images comme dans l'index
-import g1 from "@/assets/g1.jpeg";
-import g2 from "@/assets/g2.jpeg";
-import g4 from "@/assets/g4.jpeg";
-import g6 from "@/assets/g6.jpeg";
+// Import des images correspondant à la structure de la Home
+import g1 from "@/assets/jasminsuite/room-jasminsuite.webp";
+import g2 from "@/assets/azuresuite/room.webp";
+import g4 from "@/assets/olivesuite/room-view-olivesuite.webp";
+import g6 from "@/assets/royalesuite/room2.webp";
 
 export const Route = createFileRoute("/suites/$suiteId")({
   component: SuiteDetail,
@@ -20,19 +20,19 @@ function SuiteDetail() {
   const { t } = useLang();
   const navigate = useNavigate();
 
-  // Images mapping identique à la page d'accueil
+  // Mapping des images synchronisé avec la page d'accueil
   const suiteImages: Record<string, string> = {
-    "suite-azur": g1,
-    "suite-olive": g2,
-    "suite-jasmin": g4,
-    "suite-ambre": g6,
+    "suite-azur": g2,
+    "suite-jasmin": g1,
+    "suite-olive": g4,
+    "suite-royale": g6,
   };
 
   const currentImage = suiteImages[suiteId];
-  // Récupération sécurisée des données de la suite selon la langue active
+  // Récupération sécurisée des données
   const suiteData = t.suiteDetails?.suites?.[suiteId as keyof typeof t.suiteDetails.suites];
 
-  // Sécurité : redirection vers l'accueil si l'ID de la suite dans l'URL n'existe pas
+  // Redirection si l'ID est invalide
   useEffect(() => {
     if (!suiteData) {
       navigate({ to: "/" });
@@ -46,10 +46,10 @@ function SuiteDetail() {
       <div className="min-h-screen bg-background pt-24 pb-28 md:pb-40">
         <div className="container-luxe">
           
-          {/* Bouton Retour avec animation discrète au hover */}
+          {/* Bouton Retour */}
           <div className="mb-12">
             <Link 
-              to="/" 
+              to="/#suites" 
               className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors group"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
@@ -57,7 +57,7 @@ function SuiteDetail() {
             </Link>
           </div>
 
-          {/* Grille principale : Image à gauche, contenu à droite */}
+          {/* Grille principale */}
           <div className="grid md:grid-cols-12 gap-12 md:gap-20 items-start">
             
             {/* Colonne Visuelle */}
@@ -91,7 +91,7 @@ function SuiteDetail() {
                   {suiteData.description}
                 </p>
 
-                {/* Liste des prestations / caractéristiques */}
+                {/* Prestations */}
                 <div className="space-y-4 mb-12">
                   <h3 className="text-xs font-semibold tracking-wider uppercase mb-4 text-foreground">
                     {t.suiteDetails.amenitiesTitle}
@@ -104,7 +104,7 @@ function SuiteDetail() {
                   ))}
                 </div>
 
-                {/* Bouton d'action principal vers le contact ou la réservation */}
+                {/* CTA */}
                 <Link
                   to="/contact"
                   className="inline-flex items-center justify-center gap-3 bg-foreground text-background px-8 py-5 text-xs tracking-[0.25em] uppercase hover:bg-foreground/90 transition-all w-full md:w-auto"

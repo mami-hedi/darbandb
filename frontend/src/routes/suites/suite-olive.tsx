@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SuiteTemplate } from "@/components/site/SuiteTemplate";
 
-import imgMain from "@/assets/g2.jpeg";
-import g1 from "@/assets/g1.jpeg";
-import g4 from "@/assets/g4.jpeg";
-import g6 from "@/assets/g6.jpeg";
+import imgMain from "@/assets/olivesuite/Balacony-oliviersuite.webp";
+import g1 from "@/assets/olivesuite/room-olivesuite.webp";
+import g4 from "@/assets/olivesuite/room-view-olivesuite.webp";
+import g6 from "@/assets/olivesuite/Toilette-olivesuite.webp";
 
 export const Route = createFileRoute("/suites/suite-olive")({
   component: () => (
     <SuiteTemplate
       suiteId="suite-olive"
-      mainImage={imgMain}
-      galleryImages={[g1, g4, imgMain]}
+      mainImage={g4}
+      galleryImages={[g4, g1, imgMain, g6]}
     />
   ),
 });
