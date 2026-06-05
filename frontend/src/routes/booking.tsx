@@ -1,17 +1,20 @@
 // ============================================
-// Page Booking — Refactorisée
+// Page Booking — Complète avec validation
+//   des dates bloquées (bilingue FR/EN)
 // @/routes/booking.tsx
 //
-// CHANGEMENTS :
-//  • Dates passées   → gris/transparence, non cliquables (disabled={{ before: today }})
-//  • Dates indispo   → fond rose, croix, non cliquables (disabled prop dynamique)
-//  • Checkout passé  → impossible (min={2}, disabled cohérent)
-//  • DayButton enrichi : état clair pour chaque cas
-//  • Correction CSS : plus de doublons de wrapper calendar
+// FONCTIONNALITÉS :
+//  • Dates passées   → grisées, non cliquables
+//  • Dates indispo   → fond rose, croix, non cliquables
+//  • handleRangeSelect → intercepte la sélection en temps réel
+//    si une date dans le range est bloquée : message bilingue + reset du to
+//  • handleSubmit    → filet de sécurité final côté client
+//  • getUnavailableMessage → message bilingue fr/en avec la date formatée
+//  • Tarification dynamique par jour
 // ============================================
 
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Mail, MapPin, Phone, Check, ExternalLink,
   Calendar as CalendarIcon, User, Globe, X,
@@ -22,7 +25,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { fr, enUS } from "date-fns/locale";
 import {
   format, startOfToday, startOfMonth, endOfMonth,
-  addMonths, eachDayOfInterval, isBefore, isEqual,
+  addMonths, eachDayOfInterval,
 } from "date-fns";
 import { DayPicker, DateRange, DayButtonProps } from "react-day-picker";
 import "react-day-picker/src/style.css";
@@ -32,7 +35,11 @@ export const Route = createFileRoute("/booking")({
   head: () => ({
     meta: [
       { title: "Réservation — B&B Hammamet" },
-      { name: "description", content: "Sélectionnez votre méthode de réservation préférée pour la villa en exclusivité." },
+      {
+        name: "description",
+        content:
+          "Sélectionnez votre méthode de réservation préférée pour la villa en exclusivité.",
+      },
     ],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
@@ -43,7 +50,8 @@ export const Route = createFileRoute("/booking")({
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE =
+  (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 type CustomPriceMap = Record<string, number>;
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -52,10 +60,11 @@ function Booking() {
   const { checkIn, checkOut } = useSearch({ from: "/booking" });
 
   const today = startOfToday();
-  const todayStr = format(today, "yyyy-MM-dd");
 
   const [sent, setSent] = useState(false);
-  const [bookingMethod, setBookingMethod] = useState<"direct" | "airbnb">("direct");
+  const [bookingMethod, setBookingMethod] = useState<"direct" | "airbnb">(
+    "direct"
+  );
   const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
 
   // Tarification dynamique
@@ -63,19 +72,24 @@ function Booking() {
   const [customPrices, setCustomPrices] = useState<CustomPriceMap>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
-  // Dates indisponibles (depuis le backend)
+  // Dates indisponibles
   const [unavailableDates, setUnavailableDates] = useState<Date[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
 
   const [range, setRange] = useState<DateRange | undefined>(() => {
-    if (checkIn && checkOut) return { from: new Date(checkIn), to: new Date(checkOut) };
+    if (checkIn && checkOut)
+      return { from: new Date(checkIn), to: new Date(checkOut) };
     if (checkIn) return { from: new Date(checkIn), to: undefined };
     return undefined;
   });
 
   const [formData, setFormData] = useState({
-    firstName: "", lastName: "", email: "",
-    phone: "", guests: "2", message: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    guests: "2",
+    message: "",
   });
 
   const [modalStatus, setModalStatus] = useState<{
@@ -87,14 +101,16 @@ function Booking() {
 
   const AIRBNB_URL = "https://www.airbnb.fr/h/villabnb";
 
-  // ── Fetch tarifs ─────────────────────────────────────────────────────────────
+  // ── Fetch tarifs ──────────────────────────────────────────────────────────
   const loadPricesForMonth = useCallback(async (month: Date) => {
     setLoadingPrices(true);
     setCustomPrices({});
     try {
       const start = format(startOfMonth(month), "yyyy-MM-dd");
       const end = format(endOfMonth(addMonths(month, 1)), "yyyy-MM-dd");
-      const res = await fetch(`${API_BASE}/settings/prices/range?start=${start}&end=${end}`);
+      const res = await fetch(
+        `${API_BASE}/settings/prices/range?start=${start}&end=${end}`
+      );
       const result = await res.json();
       if (result.success) {
         setBasePrice(result.basePrice);
@@ -107,7 +123,7 @@ function Booking() {
     }
   }, []);
 
-  // ── Fetch disponibilités pour les deux mois visibles ──────────────────────────
+  // ── Fetch disponibilités ──────────────────────────────────────────────────
   const loadUnavailableDates = useCallback(async (month: Date) => {
     setLoadingAvail(true);
     try {
@@ -115,8 +131,16 @@ function Booking() {
       const m2 = addMonths(month, 1);
 
       const [r1, r2] = await Promise.all([
-        fetch(`${API_BASE}/availability/calendar?year=${m1.getFullYear()}&month=${m1.getMonth() + 1}`),
-        fetch(`${API_BASE}/availability/calendar?year=${m2.getFullYear()}&month=${m2.getMonth() + 1}`),
+        fetch(
+          `${API_BASE}/availability/calendar?year=${m1.getFullYear()}&month=${
+            m1.getMonth() + 1
+          }`
+        ),
+        fetch(
+          `${API_BASE}/availability/calendar?year=${m2.getFullYear()}&month=${
+            m2.getMonth() + 1
+          }`
+        ),
       ]);
       const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
 
@@ -138,18 +162,107 @@ function Booking() {
     loadUnavailableDates(displayMonth);
   }, [displayMonth, loadPricesForMonth, loadUnavailableDates]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-  const getPriceForDate = (date: Date): number => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    return customPrices[dateStr] !== undefined ? customPrices[dateStr] : basePrice;
-  };
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const getPriceForDate = useCallback(
+    (date: Date): number => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      return customPrices[dateStr] !== undefined
+        ? customPrices[dateStr]
+        : basePrice;
+    },
+    [customPrices, basePrice]
+  );
 
-  const isDateUnavailable = (date: Date): boolean => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    return unavailableDates.some((d) => format(d, "yyyy-MM-dd") === dateStr);
-  };
+  // Set de strings pour lookup O(1)
+  const unavailableDateSet = useMemo(
+    () => new Set(unavailableDates.map((d) => format(d, "yyyy-MM-dd"))),
+    [unavailableDates]
+  );
 
-  // ── Calcul total ──────────────────────────────────────────────────────────────
+  const isDateUnavailable = useCallback(
+    (date: Date): boolean => unavailableDateSet.has(format(date, "yyyy-MM-dd")),
+    [unavailableDateSet]
+  );
+
+  // ── Message bilingue pour date bloquée ───────────────────────────────────
+  const getUnavailableMessage = useCallback(
+    (date: Date): { title: string; message: string } => {
+      const formatted = format(date, "dd MMMM yyyy", {
+        locale: lang === "fr" ? fr : enUS,
+      });
+      return {
+        title:
+          lang === "fr"
+            ? "Date non disponible"
+            : "Date unavailable",
+        message:
+          lang === "fr"
+            ? `Le ${formatted} est non disponible. Vous pouvez choisir une autre date.`
+            : `${formatted} is not available. You can choose another date.`,
+      };
+    },
+    [lang]
+  );
+
+  // ── Interception de la sélection : valide le range en temps réel ─────────
+  //
+  // POURQUOI cette logique :
+  // DayPicker mode "range" : la prop `disabled` empêche le clic DIRECT sur
+  // une date rouge, mais pas qu'elle soit ENGLOBÉE dans un range from→to.
+  // Ex : checkin=10 juin, checkout=15 juin, le 12 est bloqué → range accepté
+  //      par DayPicker mais invalide → on doit scanner l'intervalle complet.
+  const handleRangeSelect = useCallback(
+    (newRange: DateRange | undefined) => {
+      // Cas 1 : reset complet (clic sur from déjà sélectionné)
+      if (!newRange) {
+        setRange(undefined);
+        return;
+      }
+
+      // Cas 2 : seul le "from" vient d'être posé (premier clic)
+      if (newRange.from && !newRange.to) {
+        if (isDateUnavailable(newRange.from)) {
+          // Filet de sécurité (disabled devrait déjà l'empêcher)
+          const { title, message } = getUnavailableMessage(newRange.from);
+          setModalStatus({ isOpen: true, type: "warning", title, message });
+          setRange(undefined);
+          return;
+        }
+        setRange(newRange);
+        return;
+      }
+
+      // Cas 3 : range complet from→to (deuxième clic = checkout choisi)
+      // → Scanner TOUTES les dates de l'intervalle inclusif
+      if (newRange.from && newRange.to) {
+        let blockedDay: Date | undefined;
+        try {
+          const days = eachDayOfInterval({
+            start: newRange.from,
+            end: newRange.to,
+          });
+          // Première date bloquée trouvée dans l'intervalle
+          blockedDay = days.find((day) => isDateUnavailable(day));
+        } catch {
+          // eachDayOfInterval lève si start > end — on laisse passer
+        }
+
+        if (blockedDay) {
+          const { title, message } = getUnavailableMessage(blockedDay);
+          setModalStatus({ isOpen: true, type: "warning", title, message });
+          // Conserver le "from" valide — l'utilisateur choisit un autre "to"
+          setRange({ from: newRange.from, to: undefined });
+          return;
+        }
+      }
+
+      // Aucune date bloquée dans le range → valide
+      setRange(newRange);
+    },
+    [isDateUnavailable, getUnavailableMessage]
+  );
+
+  // ── Calcul total ──────────────────────────────────────────────────────────
   const calculateTotalDetails = () => {
     if (!range?.from || !range?.to) return { total: 0, nights: 0, breakdowns: [] };
     try {
@@ -169,19 +282,38 @@ function Booking() {
     }
   };
 
-  const { total: totalPrice, nights: totalNights, breakdowns: priceBreakdowns } =
-    calculateTotalDetails();
+  const {
+    total: totalPrice,
+    nights: totalNights,
+    breakdowns: priceBreakdowns,
+  } = calculateTotalDetails();
 
-  // ── Submit ────────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!range?.from || !range?.to) {
       setModalStatus({
-        isOpen: true, type: "warning",
+        isOpen: true,
+        type: "warning",
         title: t.booking.missingDatesTitle,
         message: t.booking.missingDatesDesc,
       });
       return;
+    }
+
+    // ── Filet de sécurité : re-vérifie que l'intervalle ne contient pas
+    //    de date bloquée (au cas où les données auraient changé depuis la sélection)
+    try {
+      const days = eachDayOfInterval({ start: range.from, end: range.to });
+      const blockedDay = days.find((day) => isDateUnavailable(day));
+      if (blockedDay) {
+        const { title, message } = getUnavailableMessage(blockedDay);
+        setModalStatus({ isOpen: true, type: "warning", title, message });
+        return;
+      }
+    } catch {
+      // intervalle invalide — laisse le serveur rejeter
     }
 
     try {
@@ -204,40 +336,60 @@ function Booking() {
       if (response.ok) {
         setSent(true);
         setRange(undefined);
-        setFormData({ firstName: "", lastName: "", email: "", phone: "", guests: "2", message: "" });
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          guests: "2",
+          message: "",
+        });
         setModalStatus({
-          isOpen: true, type: "success",
+          isOpen: true,
+          type: "success",
           title: t.booking.successTitle,
           message: t.booking.successDesc,
         });
-        setTimeout(() => { window.location.href = "/"; }, 4000);
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 4000);
       } else {
         const error = await response.json();
         setModalStatus({
-          isOpen: true, type: "error",
+          isOpen: true,
+          type: "error",
           title: t.booking.errorTitle,
           message: error.error || "Une erreur est survenue.",
         });
       }
-    } catch (error) {
+    } catch {
       setModalStatus({
-        isOpen: true, type: "error",
+        isOpen: true,
+        type: "error",
         title: t.booking.errorConnTitle,
         message: t.booking.errorConnDesc,
       });
     }
   };
 
-  // ── Dates désactivées pour DayPicker ─────────────────────────────────────────
-  // On désactive : avant aujourd'hui + toutes les dates indisponibles
-  const disabledDays = [
-    { before: today },
-    ...unavailableDates,
-  ];
+  // ── Dates désactivées pour DayPicker ─────────────────────────────────────
+  // On passe les dates indisponibles directement + { before: today }.
+  // DayPicker les rend non-cliquables ET les exclut du range highlight,
+  // mais onSelect peut quand même recevoir un range qui les englobe
+  // → c'est handleRangeSelect qui intercepte ce cas.
+  const disabledDays = [{ before: today }, ...unavailableDates];
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Modifiers personnalisés : marque "unavailable" pour le DayButton ──────
+  // Permet au DayButton de savoir qu'une date est bloquée (manuellement
+  // ou réservée) sans refaire le lookup dans unavailableDates.
+  const modifiersUnavailable = useMemo(
+    () => ({ unavailable: unavailableDates }),
+    [unavailableDates]
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDU
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <SiteLayout>
       <div className="bg-neutral-950 text-white min-h-screen font-sans selection:bg-white selection:text-black">
@@ -247,25 +399,41 @@ function Booking() {
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
             <div className="bg-neutral-900 border border-neutral-800 p-6 md:p-8 max-w-md w-full shadow-2xl relative animate-scale-up">
               <button
-                onClick={() => setModalStatus((p) => ({ ...p, isOpen: false }))}
+                onClick={() =>
+                  setModalStatus((p) => ({ ...p, isOpen: false }))
+                }
                 className="absolute top-4 right-4 text-neutral-400 hover:text-white transition"
               >
                 <X className="h-5 w-5" />
               </button>
               <div className="flex flex-col items-center text-center">
-                <div className={`p-4 rounded-full mb-4 border ${
-                  modalStatus.type === "success" ? "bg-emerald-950/50 border-emerald-800 text-emerald-400" :
-                  modalStatus.type === "warning" ? "bg-amber-950/50 border-amber-800 text-amber-400" :
-                  "bg-red-950/50 border-red-800 text-red-400"
-                }`}>
-                  {modalStatus.type === "success" && <Check className="h-8 w-8" />}
-                  {modalStatus.type === "warning" && <AlertTriangle className="h-8 w-8" />}
+                <div
+                  className={`p-4 rounded-full mb-4 border ${
+                    modalStatus.type === "success"
+                      ? "bg-emerald-950/50 border-emerald-800 text-emerald-400"
+                      : modalStatus.type === "warning"
+                      ? "bg-amber-950/50 border-amber-800 text-amber-400"
+                      : "bg-red-950/50 border-red-800 text-red-400"
+                  }`}
+                >
+                  {modalStatus.type === "success" && (
+                    <Check className="h-8 w-8" />
+                  )}
+                  {modalStatus.type === "warning" && (
+                    <AlertTriangle className="h-8 w-8" />
+                  )}
                   {modalStatus.type === "error" && <X className="h-8 w-8" />}
                 </div>
-                <h3 className="font-display text-2xl mb-2 text-white">{modalStatus.title}</h3>
-                <p className="text-sm text-neutral-400 leading-relaxed mb-6">{modalStatus.message}</p>
+                <h3 className="font-display text-2xl mb-2 text-white">
+                  {modalStatus.title}
+                </h3>
+                <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+                  {modalStatus.message}
+                </p>
                 <button
-                  onClick={() => setModalStatus((p) => ({ ...p, isOpen: false }))}
+                  onClick={() =>
+                    setModalStatus((p) => ({ ...p, isOpen: false }))
+                  }
                   className="w-full bg-white text-black py-3 text-xs tracking-widest uppercase font-semibold hover:bg-neutral-200 transition"
                 >
                   {t.booking.modalClose}
@@ -309,14 +477,28 @@ function Booking() {
               }`}
             >
               <div className="flex items-start gap-4">
-                <div className={`p-3 border ${bookingMethod === "direct" ? "border-white bg-neutral-800 text-white" : "border-neutral-800 text-neutral-400"}`}>
+                <div
+                  className={`p-3 border ${
+                    bookingMethod === "direct"
+                      ? "border-white bg-neutral-800 text-white"
+                      : "border-neutral-800 text-neutral-400"
+                  }`}
+                >
                   <User className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-base font-bold tracking-wide uppercase font-display ${bookingMethod === "direct" ? "text-white" : "text-neutral-400"}`}>
+                  <h3
+                    className={`text-base font-bold tracking-wide uppercase font-display ${
+                      bookingMethod === "direct"
+                        ? "text-white"
+                        : "text-neutral-400"
+                    }`}
+                  >
                     {t.booking.directTitle}
                   </h3>
-                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">{t.booking.directDesc}</p>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                    {t.booking.directDesc}
+                  </p>
                 </div>
               </div>
               {bookingMethod === "direct" && (
@@ -337,14 +519,32 @@ function Booking() {
               }`}
             >
               <div className="flex items-start gap-4">
-                <div className={`p-3 border ${bookingMethod === "airbnb" ? "border-white/30 bg-white text-[#FF5A5F]" : "border-neutral-800 text-neutral-400"}`}>
+                <div
+                  className={`p-3 border ${
+                    bookingMethod === "airbnb"
+                      ? "border-white/30 bg-white text-[#FF5A5F]"
+                      : "border-neutral-800 text-neutral-400"
+                  }`}
+                >
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-base font-bold tracking-wide uppercase font-display ${bookingMethod === "airbnb" ? "text-white" : "text-neutral-400"}`}>
+                  <h3
+                    className={`text-base font-bold tracking-wide uppercase font-display ${
+                      bookingMethod === "airbnb"
+                        ? "text-white"
+                        : "text-neutral-400"
+                    }`}
+                  >
                     {t.booking.airbnbTitle}
                   </h3>
-                  <p className={`text-xs mt-1 leading-relaxed ${bookingMethod === "airbnb" ? "text-white/80" : "text-neutral-400"}`}>
+                  <p
+                    className={`text-xs mt-1 leading-relaxed ${
+                      bookingMethod === "airbnb"
+                        ? "text-white/80"
+                        : "text-neutral-400"
+                    }`}
+                  >
                     {t.booking.airbnbDesc}
                   </p>
                 </div>
@@ -392,14 +592,25 @@ function Booking() {
                     {lang === "fr" ? "Sélectionné" : "Selected"}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="text-amber-400 font-bold text-[10px]">DT</span>
+                    <span className="text-amber-400 font-bold text-[10px]">
+                      DT
+                    </span>
                     {lang === "fr" ? "Tarif spécial" : "Special rate"}
                   </span>
                 </div>
 
+                {/* Bannière date indispo si range invalide */}
+                {range?.from && !range?.to && (
+                  <div className="mb-4 px-4 py-3 bg-amber-950/30 border border-amber-800/40 text-amber-300 text-xs rounded flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    {lang === "fr"
+                      ? "Sélectionnez maintenant votre date de départ."
+                      : "Now select your check-out date."}
+                  </div>
+                )}
+
                 {/* CSS du calendrier dark */}
                 <style>{`
-                  /* ── Reset DayPicker pour thème dark ── */
                   .booking-rdp {
                     --rdp-cell-size: 40px;
                     --rdp-accent-color: #fff;
@@ -421,9 +632,7 @@ function Booking() {
                       flex-direction: row !important;
                     }
                   }
-                  .booking-rdp .rdp-month {
-                    flex: 1;
-                  }
+                  .booking-rdp .rdp-month { flex: 1; }
                   .booking-rdp .rdp-head_cell {
                     text-transform: uppercase;
                     font-size: 0.65rem;
@@ -438,9 +647,7 @@ function Booking() {
                     letter-spacing: 0.15em;
                     color: #a3a3a3;
                   }
-                  .booking-rdp .rdp-nav_button {
-                    color: #737373;
-                  }
+                  .booking-rdp .rdp-nav_button { color: #737373; }
                   .booking-rdp .rdp-nav_button:hover {
                     background: #262626;
                     color: #fff;
@@ -450,33 +657,10 @@ function Booking() {
                     border-spacing: 2px;
                     width: 100%;
                   }
-
-                  /* ── Styles des états ── */
-
-                  /* Passé : gris barré */
-                  .booking-rdp .rdp-day[data-past="true"] button {
-                    opacity: 0.25;
-                    cursor: default;
-                    pointer-events: none;
-                  }
-                  /* Indispo : rose sombre */
-                  .booking-rdp .rdp-day[data-unavailable="true"] button {
-                    background: rgba(136, 19, 55, 0.25) !important;
-                    border: 1px solid rgba(244, 63, 94, 0.3) !important;
-                    cursor: not-allowed !important;
-                    pointer-events: none;
-                  }
-                  /* Hover dispo */
-                  .booking-rdp .rdp-day:not([disabled]):not([data-unavailable="true"]) button:hover {
-                    background: #262626;
-                    border-color: #525252 !important;
-                  }
-                  /* Range middle */
                   .booking-rdp .rdp-day_range_middle button {
                     background: #1c1c1c !important;
                     border-radius: 0 !important;
                   }
-                  /* Sélectionné bord */
                   .booking-rdp .rdp-day_selected button,
                   .booking-rdp .rdp-day_range_start button,
                   .booking-rdp .rdp-day_range_end button {
@@ -484,20 +668,37 @@ function Booking() {
                     color: #000 !important;
                     border-radius: 0 !important;
                   }
+                  /* ── Date bloquée dans un range highlight ──
+                     DayPicker peut colorer en range_middle une date
+                     bloquée si le survol la traverse. On réécrase
+                     pour conserver l'apparence rose + curseur interdit. */
+                  .booking-rdp .rdp-day_range_middle[data-unavailable] button,
+                  .booking-rdp .rdp-day_range_middle.rdp-day_disabled button {
+                    background: rgba(136, 19, 55, 0.25) !important;
+                    cursor: not-allowed !important;
+                    pointer-events: none !important;
+                  }
                 `}</style>
 
-                {/* DayPicker wrapper */}
-                <div className={`transition-opacity duration-200 ${loadingPrices || loadingAvail ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+                {/* DayPicker */}
+                <div
+                  className={`transition-opacity duration-200 ${
+                    loadingPrices || loadingAvail
+                      ? "opacity-40 pointer-events-none"
+                      : "opacity-100"
+                  }`}
+                >
                   <DayPicker
                     className="booking-rdp"
                     mode="range"
                     selected={range}
-                    onSelect={setRange}
+                    onSelect={handleRangeSelect}
                     month={displayMonth}
                     onMonthChange={setDisplayMonth}
                     locale={lang === "fr" ? fr : enUS}
                     numberOfMonths={2}
                     disabled={disabledDays}
+                    modifiers={modifiersUnavailable}
                     min={2}
                     components={{
                       DayButton: (props: DayButtonProps) => {
@@ -509,9 +710,9 @@ function Booking() {
                         }
 
                         const dateStr = format(targetDate, "yyyy-MM-dd");
-                        const todayStr2 = format(today, "yyyy-MM-dd");
+                        const todayStr = format(today, "yyyy-MM-dd");
 
-                        const isPast = dateStr < todayStr2;
+                        const isPast = dateStr < todayStr;
                         const isUnavail = isDateUnavailable(targetDate);
                         const datePrice = getPriceForDate(targetDate);
                         const isCustom = customPrices[dateStr] !== undefined;
@@ -519,55 +720,107 @@ function Booking() {
                         const isMid = modifiers.range_middle;
                         const isDisabled = isPast || isUnavail;
 
+                        // ── Détecte si ce jour disponible est dans un range
+                        //    qui traverse une date bloquée (feedback visuel hover).
+                        //    Dans ce cas, on empêche la sélection et on affiche
+                        //    un curseur "interdit" même sur les jours disponibles
+                        //    qui seraient après la date bloquée.
+                        const rangeFromStr = range?.from
+                          ? format(range.from, "yyyy-MM-dd")
+                          : null;
+                        let isAfterBlockInRange = false;
+                        if (rangeFromStr && !range?.to && dateStr > rangeFromStr) {
+                          try {
+                            const preview = eachDayOfInterval({
+                              start: range!.from!,
+                              end: targetDate,
+                            });
+                            isAfterBlockInRange = preview.some(
+                              (d) =>
+                                format(d, "yyyy-MM-dd") !== dateStr &&
+                                format(d, "yyyy-MM-dd") !== rangeFromStr &&
+                                isDateUnavailable(d)
+                            );
+                          } catch {
+                            // ignore
+                          }
+                        }
+
                         return (
                           <button
                             {...buttonProps}
                             disabled={isDisabled || buttonProps.disabled}
                             style={{ height: "52px", borderRadius: 0 }}
+                            data-unavailable={isUnavail ? "true" : undefined}
+                            title={
+                              isUnavail
+                                ? lang === "fr"
+                                  ? "Date non disponible"
+                                  : "Date unavailable"
+                                : isAfterBlockInRange
+                                ? lang === "fr"
+                                  ? "Une date bloquée est dans cet intervalle"
+                                  : "A blocked date is within this range"
+                                : undefined
+                            }
                             className={[
                               "rdp-day_button w-full flex flex-col items-center justify-center gap-0.5 relative transition-all",
-                              // Passé
                               isPast
                                 ? "opacity-25 cursor-default pointer-events-none border border-transparent"
                                 : "",
-                              // Indispo (non passé)
                               !isPast && isUnavail
                                 ? "bg-rose-950/30 border border-rose-800/40 cursor-not-allowed pointer-events-none"
                                 : "",
-                              // Normal dispo
-                              !isPast && !isUnavail && !isEdge && !isMid
+                              // Jour dispo mais après une date bloquée dans le range hover
+                              !isPast && !isUnavail && isAfterBlockInRange
+                                ? "opacity-40 cursor-not-allowed border border-rose-900/30"
+                                : "",
+                              !isPast && !isUnavail && !isEdge && !isMid && !isAfterBlockInRange
                                 ? "border border-neutral-800 hover:border-neutral-500 hover:bg-neutral-900"
                                 : "",
                             ].join(" ")}
                           >
                             {/* Croix sur indispo */}
                             {!isPast && isUnavail && (
-                              <span className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+                              <span
+                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                aria-hidden
+                              >
                                 <span className="absolute w-4 h-[1px] bg-rose-600 rotate-45" />
                                 <span className="absolute w-4 h-[1px] bg-rose-600 -rotate-45" />
                               </span>
                             )}
 
                             {/* Numéro jour */}
-                            <span className={[
-                              "text-xs font-semibold leading-none z-10",
-                              isPast ? "text-neutral-600 line-through" :
-                              isUnavail ? "text-rose-700" :
-                              isEdge ? "text-black" :
-                              "text-white",
-                            ].join(" ")}>
+                            <span
+                              className={[
+                                "text-xs font-semibold leading-none z-10",
+                                isPast
+                                  ? "text-neutral-600 line-through"
+                                  : isUnavail
+                                  ? "text-rose-700"
+                                  : isEdge
+                                  ? "text-black"
+                                  : "text-white",
+                              ].join(" ")}
+                            >
                               {targetDate.getDate()}
                             </span>
 
                             {/* Prix */}
                             {!isPast && !isUnavail && (
-                              <span className={[
-                                "text-[8px] font-mono leading-none z-10",
-                                isEdge ? "text-black/60 font-bold" :
-                                isMid ? "text-neutral-500" :
-                                isCustom ? "text-amber-400 font-bold" :
-                                "text-neutral-600",
-                              ].join(" ")}>
+                              <span
+                                className={[
+                                  "text-[8px] font-mono leading-none z-10",
+                                  isEdge
+                                    ? "text-black/60 font-bold"
+                                    : isMid
+                                    ? "text-neutral-500"
+                                    : isCustom
+                                    ? "text-amber-400 font-bold"
+                                    : "text-neutral-600",
+                                ].join(" ")}
+                              >
                                 {datePrice} DT
                               </span>
                             )}
@@ -581,15 +834,27 @@ function Booking() {
                 {/* Dates sélectionnées */}
                 <div className="mt-6 grid grid-cols-2 gap-4 border-t border-neutral-800 pt-6 text-center">
                   <div className="p-3 bg-neutral-900/50 border border-neutral-800">
-                    <p className="text-[10px] tracking-widest uppercase text-neutral-400">{t.booking.checkIn}</p>
+                    <p className="text-[10px] tracking-widest uppercase text-neutral-400">
+                      {t.booking.checkIn}
+                    </p>
                     <p className="text-sm font-medium mt-1 text-white">
-                      {range?.from ? format(range.from, "dd MMMM yyyy", { locale: lang === "fr" ? fr : enUS }) : "—"}
+                      {range?.from
+                        ? format(range.from, "dd MMMM yyyy", {
+                            locale: lang === "fr" ? fr : enUS,
+                          })
+                        : "—"}
                     </p>
                   </div>
                   <div className="p-3 bg-neutral-900/50 border border-neutral-800">
-                    <p className="text-[10px] tracking-widest uppercase text-neutral-400">{t.booking.checkOut}</p>
+                    <p className="text-[10px] tracking-widest uppercase text-neutral-400">
+                      {t.booking.checkOut}
+                    </p>
                     <p className="text-sm font-medium mt-1 text-white">
-                      {range?.to ? format(range.to, "dd MMMM yyyy", { locale: lang === "fr" ? fr : enUS }) : "—"}
+                      {range?.to
+                        ? format(range.to, "dd MMMM yyyy", {
+                            locale: lang === "fr" ? fr : enUS,
+                          })
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -604,32 +869,71 @@ function Booking() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid sm:grid-cols-2 gap-6">
                     <Field label={t.contact.firstName} required>
-                      <input required type="text" value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className={inputCls} placeholder={t.contact.firstName} />
+                      <input
+                        required
+                        type="text"
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, firstName: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder={t.contact.firstName}
+                      />
                     </Field>
                     <Field label={t.contact.lastName} required>
-                      <input required type="text" value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className={inputCls} placeholder={t.contact.lastName} />
+                      <input
+                        required
+                        type="text"
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lastName: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder={t.contact.lastName}
+                      />
                     </Field>
                     <Field label={t.contact.email} required>
-                      <input required type="email" value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className={inputCls} placeholder="exemple@domaine.com" />
+                      <input
+                        required
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="exemple@domaine.com"
+                      />
                     </Field>
                     <Field label={t.contact.phone}>
-                      <input type="tel" value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className={inputCls} placeholder="+216 -- --- ---" />
+                      <input
+                        required
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="+216 -- --- ---"
+                      />
                     </Field>
                     <Field label={t.booking.guests}>
-                      <select value={formData.guests}
-                        onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
-                        className={inputCls}>
+                      <select
+                        value={formData.guests}
+                        onChange={(e) =>
+                          setFormData({ ...formData, guests: e.target.value })
+                        }
+                        className={inputCls}
+                      >
                         {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                          <option key={n} value={n} className="bg-neutral-900 text-white">
-                            {n} {n > 1 ? t.booking.guestsPlaceholderPlural : t.booking.guestsPlaceholder}
+                          <option
+                            key={n}
+                            value={n}
+                            className="bg-neutral-900 text-white"
+                          >
+                            {n}{" "}
+                            {n > 1
+                              ? t.booking.guestsPlaceholderPlural
+                              : t.booking.guestsPlaceholder}
                           </option>
                         ))}
                       </select>
@@ -637,9 +941,15 @@ function Booking() {
                   </div>
 
                   <Field label={t.booking.specialRequests}>
-                    <textarea rows={4} value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className={inputCls} placeholder={t.booking.specialRequestsPlaceholder} />
+                    <textarea
+                      rows={4}
+                      value={formData.message}
+                      onChange={(e) =>
+                        setFormData({ ...formData, message: e.target.value })
+                      }
+                      className={inputCls}
+                      placeholder={t.booking.specialRequestsPlaceholder}
+                    />
                   </Field>
 
                   <button
@@ -648,7 +958,10 @@ function Booking() {
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-black font-semibold px-8 py-4 text-xs tracking-[0.25em] uppercase hover:bg-neutral-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {sent ? (
-                      <><Check className="h-4 w-4 text-black" /> {t.booking.submitSending}</>
+                      <>
+                        <Check className="h-4 w-4 text-black" />
+                        {t.booking.submitSending}
+                      </>
                     ) : (
                       t.booking.submitDirect
                     )}
@@ -687,32 +1000,52 @@ function Booking() {
           <aside className="lg:col-span-4 space-y-6">
 
             {/* Récap financier */}
-            {bookingMethod === "direct" && range?.from && range?.to && totalNights > 0 && (
-              <div className="p-6 border border-white bg-neutral-900/90 shadow-xl space-y-4 animate-scale-up">
-                <div className="text-[10px] tracking-[0.25em] uppercase text-amber-400 font-bold border-b border-neutral-800 pb-2">
-                  {lang === "fr" ? "Détail de votre tarification" : "Your pricing breakdown"}
+            {bookingMethod === "direct" &&
+              range?.from &&
+              range?.to &&
+              totalNights > 0 && (
+                <div className="p-6 border border-white bg-neutral-900/90 shadow-xl space-y-4 animate-scale-up">
+                  <div className="text-[10px] tracking-[0.25em] uppercase text-amber-400 font-bold border-b border-neutral-800 pb-2">
+                    {lang === "fr"
+                      ? "Détail de votre tarification"
+                      : "Your pricing breakdown"}
+                  </div>
+                  <div className="max-h-44 overflow-y-auto space-y-2 pr-1 text-xs text-neutral-400">
+                    {priceBreakdowns.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center"
+                      >
+                        <span>
+                          {lang === "fr" ? "Nuit du " : "Night of "}
+                          {format(item.date, "dd MMM yyyy", {
+                            locale: lang === "fr" ? fr : enUS,
+                          })}
+                        </span>
+                        <span className="font-mono text-white">
+                          {item.price} DT
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
+                    <span className="text-xs text-neutral-300">
+                      Total ({totalNights}{" "}
+                      {totalNights > 1
+                        ? lang === "fr"
+                          ? "nuits"
+                          : "nights"
+                        : lang === "fr"
+                        ? "nuit"
+                        : "night"}
+                      ) :
+                    </span>
+                    <span className="text-2xl font-display font-bold text-white font-mono">
+                      {totalPrice} DT
+                    </span>
+                  </div>
                 </div>
-                <div className="max-h-44 overflow-y-auto space-y-2 pr-1 text-xs text-neutral-400">
-                  {priceBreakdowns.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center">
-                      <span>
-                        {lang === "fr" ? "Nuit du " : "Night of "}
-                        {format(item.date, "dd MMM yyyy", { locale: lang === "fr" ? fr : enUS })}
-                      </span>
-                      <span className="font-mono text-white">{item.price} DT</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
-                  <span className="text-xs text-neutral-300">
-                    Total ({totalNights} {totalNights > 1 ? (lang === "fr" ? "nuits" : "nights") : (lang === "fr" ? "nuit" : "night")}) :
-                  </span>
-                  <span className="text-2xl font-display font-bold text-white font-mono">
-                    {totalPrice} DT
-                  </span>
-                </div>
-              </div>
-            )}
+              )}
 
             {/* Infos contact */}
             <div className="p-6 border border-neutral-800 space-y-6 bg-neutral-900/40 backdrop-blur-sm">
@@ -720,22 +1053,26 @@ function Booking() {
                 <div className="text-[10px] tracking-[0.25em] uppercase text-neutral-400 font-bold mb-2">
                   {t.booking.asideTitle}
                 </div>
-                <p className="text-xs text-neutral-400 leading-relaxed">{t.booking.asideDesc}</p>
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  {t.booking.asideDesc}
+                </p>
               </div>
               <ul className="space-y-3 text-xs border-t border-neutral-800 pt-4">
                 <li className="flex items-center gap-3 text-neutral-300">
-                  <MapPin className="h-3.5 w-3.5 text-neutral-500" /> Avenue de la Plage, Hammamet
+                  <MapPin className="h-3.5 w-3.5 text-neutral-500" />
+                  Avenue de la Plage, Hammamet
                 </li>
                 <li className="flex items-center gap-3 text-neutral-300">
-                  <Phone className="h-3.5 w-3.5 text-neutral-500" /> +216 72 000 000
+                  <Phone className="h-3.5 w-3.5 text-neutral-500" />
+                  +216 72 000 000
                 </li>
                 <li className="flex items-center gap-3 text-neutral-300">
-                  <Mail className="h-3.5 w-3.5 text-neutral-500" /> experience@bnb-villa.com
+                  <Mail className="h-3.5 w-3.5 text-neutral-500" />
+                  experience@bnb-villa.com
                 </li>
               </ul>
             </div>
           </aside>
-
         </section>
       </div>
     </SiteLayout>
@@ -747,14 +1084,19 @@ const inputCls =
   "w-full bg-neutral-900/50 border border-neutral-800 text-white focus:border-white transition px-4 py-3.5 text-sm outline-none placeholder:text-neutral-600 appearance-none";
 
 function Field({
-  label, required, children,
+  label,
+  required,
+  children,
 }: {
-  label: string; required?: boolean; children: React.ReactNode;
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
 }) {
   return (
     <label className="block">
       <span className="text-[0.65rem] tracking-[0.25em] uppercase text-neutral-400 font-bold">
-        {label} {required && <span className="text-neutral-500">*</span>}
+        {label}{" "}
+        {required && <span className="text-neutral-500">*</span>}
       </span>
       <div className="mt-2">{children}</div>
     </label>

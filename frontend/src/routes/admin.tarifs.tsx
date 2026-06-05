@@ -57,10 +57,12 @@ useEffect(() => {
   }
 }, [selectedDay]); // ← retirer getPriceForDate des dépendances
 
-  // Initialiser le prix de base
-  useEffect(() => {
+  // Initialiser uniquement au chargement initial ou quand editingBasePrice devient vrai
+useEffect(() => {
+  if (!editingBasePrice) {
     setBasePriceInput(basePrice.toString());
-  }, [basePrice]);
+  }
+}, [basePrice, editingBasePrice]);
 
   // Mettre à jour la liste des tarifs customisés
   useEffect(() => {
