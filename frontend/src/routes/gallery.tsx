@@ -8,8 +8,9 @@ import { useState, useEffect } from "react";
 import { Play, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
-import g1 from "@/assets/gallery/kitchen.webp";
 import g2 from "@/assets/gallery/outside.webp";
+import g1 from "@/assets/gallery/kitchen.webp";
+
 import g3 from "@/assets/gallery/outside2.webp";
 import g4 from "@/assets/gallery/plus.webp";
 import g5 from "@/assets/gallery/plusss.webp";
