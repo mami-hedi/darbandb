@@ -8,22 +8,29 @@ import { useState, useEffect } from "react";
 import { Play, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
-import g1 from "@/assets/g1.jpeg";
-import g2 from "@/assets/g2.jpeg";
-import g3 from "@/assets/g3.jpeg";
-import g4 from "@/assets/g4.jpeg";
-import g5 from "@/assets/g5.jpeg";
-import g6 from "@/assets/g6.jpeg";
+import g1 from "@/assets/gallery/kitchen.webp";
+import g2 from "@/assets/gallery/outside.webp";
+import g3 from "@/assets/gallery/outside2.webp";
+import g4 from "@/assets/gallery/plus.webp";
+import g5 from "@/assets/gallery/plusss.webp";
+import g6 from "@/assets/gallery/table.webp";
 import g7 from "@/assets/g7.jpeg";
 import g8 from "@/assets/g8.jpeg";
-import g9 from "@/assets/g9.jpeg";
-import g10 from "@/assets/g10.jpeg";
-import g11 from "@/assets/g11.jpeg";
-import g12 from "@/assets/g12.jpeg";
-import g13 from "@/assets/g13.jpeg";
+import g9 from "@/assets/gallery/terr3.webp";
+import g10 from "@/assets/gallery/topterr.webp";
+import g11 from "@/assets/gallery/vue-sallon-terasse.webp";
+//import g12 from "@/assets/gallery/g12.jpeg";
+import g13 from "@/assets/jasminsuite/toilette-jasminsuite.webp";
 import g14 from "@/assets/g14.jpeg";
-import g15 from "@/assets/g15.jpeg";
+import g15 from "@/assets/olivesuite/Balacony-oliviersuite.webp";
 import g16 from "@/assets/g16.jpeg";
+import g17 from "@/assets/jasminsuite/room-jasminsuite.webp";
+import g18 from "@/assets/azuresuite/room.webp";
+import g19 from "@/assets/olivesuite/room-view-olivesuite.webp";
+import g20 from "@/assets/royalesuite/room2.webp";
+import g21 from "@/assets/g2.jpeg";
+import g22 from "@/assets/g5.jpeg";
+import g23 from "@/assets/g9.jpeg";
 
 export const Route = createFileRoute("/gallery")({
   head: () => ({
@@ -42,26 +49,33 @@ type Item = { src: string; alt: string; type: "image" | "video"; ratio: string }
 // Tableau trié : Ratios identiques regroupés pour s'aligner côte à côte sans briser la grille
 const items: Item[] = [
   // Bloc 1 : Les Carrés (1/1) - S'alignent harmonieusement ensemble
-  { src: g6, alt: "Suite Principale", type: "image", ratio: "aspect-[1/1]" },
-  { src: g5, alt: "Dressing Luxe", type: "image", ratio: "aspect-[1/1]" },
-  { src: g3, alt: "Salle de Bain", type: "image", ratio: "aspect-[1/1]" },
-  { src: g9, alt: "Espace Nuit", type: "image", ratio: "aspect-[1/1]" },
-  { src: g12, alt: "Détails & Matières", type: "image", ratio: "aspect-[1/1]" },
-  { src: g15, alt: "Perspective Intérieure", type: "image", ratio: "aspect-[1/1]" },
+  { src: g3, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  { src: g6, alt: "Cuisine Équipée", type: "image", ratio: "aspect-[4/3]" },
+  { src: g5, alt: "Escalier", type: "image", ratio: "aspect-[4/3]" },
   
-  // Bloc 2 : Les Paysages (4/3) - Forment des lignes horizontales cinématographiques parfaites
-  { src: g1, alt: "Le Grand Salon", type: "image", ratio: "aspect-[4/3]" },
-  { src: g2, alt: "Cuisine Équipée", type: "image", ratio: "aspect-[4/3]" },
+  { src: g18, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g9, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  { src: g15, alt: "Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  
+  { src: g17, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g2, alt: "Terrasse", type: "image", ratio: "aspect-[4/3]" },
   { src: g7, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+
   { src: g8, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g10, alt: "Salle de Bain", type: "image", ratio: "aspect-[4/3]" },
-  { src: g11, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g10, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  { src: g11, alt: "Salon", type: "image", ratio: "aspect-[4/3]" },
+
   { src: g13, alt: "Salle de Bain", type: "image", ratio: "aspect-[4/3]" },
-  { src: g14, alt: "Lumière du Matin", type: "image", ratio: "aspect-[4/3]" },
-  
-  // Bloc 3 : Les Portraits / Ratios Verticaux ajustés (4/3 ou 3/4 selon vos préférences d'affichage de grille)
-  { src: g4, alt: "Lumières du Salon", type: "image", ratio: "aspect-[4/3]" },
-  { src: g16, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  { src: g14, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g1, alt: "Cuisine & salon", type: "image", ratio: "aspect-[4/3]" },
+
+  { src: g19, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g4, alt: "Détails & Matières", type: "image", ratio: "aspect-[4/3]" },
+  { src: g20, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+
+  { src: g21, alt: "Cuisine Équipée", type: "image", ratio: "aspect-[4/3]" },
+  { src: g22, alt: "Dressing", type: "image", ratio: "aspect-[4/3]" },
+  { src: g23, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
 ];
 
 function Gallery() {

@@ -9,11 +9,12 @@ import { useLang } from "@/i18n/LanguageContext";
 // Assets
 import heroImg1 from "../assets/hero-1.JPG";
 import heroImg2 from "../assets/hero-2.JPG";
-import heroImg3 from "../assets/hero-3.JPG";
-import g1 from "@/assets/g1.jpeg";
-import g2 from "@/assets/g2.jpeg";
-import g4 from "@/assets/g4.jpeg";
-import g6 from "@/assets/g6.jpeg";
+
+import heroImg3 from "@/assets/gallery/outside2.webp";
+import g1 from "@/assets/jasminsuite/room-jasminsuite.webp";
+import g2 from "@/assets/azuresuite/room.webp";
+import g4 from "@/assets/olivesuite/room-view-olivesuite.webp";
+import g6 from "@/assets/royalesuite/room2.webp";
 import c2 from "@/assets/chef.jpg";
 import c1 from "@/assets/chauffeur.jpg";
 import c3 from "@/assets/c3.jpg";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type SuiteId = "suite-azur" | "suite-olive" | "suite-jasmin" | "suite-ambre";
+type SuiteId = "suite-azur" | "suite-olive" | "suite-jasmin" | "suite-royale";
 
 interface SuiteItem {
   id: SuiteId;
@@ -50,10 +51,10 @@ function Home() {
   const [activeExperience, setActiveExperience] = useState<ExperienceItem | null>(null);
 
   const suiteImages: Record<SuiteId, string> = {
-    "suite-azur": g1,
-    "suite-olive": g2,
-    "suite-jasmin": g4,
-    "suite-ambre": g6,
+    "suite-azur": g2,
+    "suite-jasmin": g1,
+    "suite-olive": g4,
+    "suite-royale": g6,
   };
 
   const experiences: ExperienceItem[] = [
@@ -128,46 +129,46 @@ function Home() {
 
   return (
     <SiteLayout transparentHeader>
-      {/* --- HERO (Identitaire, s'ouvre sur l'image) --- */}
-      {/* --- SECTION HÉRO MODIFIÉE --- */}
-<section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black">
-  {/* Images en fond (ne pas changer) */}
-  <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 h-full w-full gap-px md:gap-0">
-    {[heroImg1, heroImg2, heroImg3].map((img, index) => (
-      <div key={index} className="relative h-full w-full overflow-hidden">
-        <motion.img src={img} className="h-full w-full object-cover" />
-      </div>
-    ))}
+      
+      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black">
+  
+  {/* Image unique en fond : j'utilise 'object-cover' pour remplir l'écran comme un vrai Héro */}
+  <div className="absolute inset-0">
+    <img 
+      src={heroImg3} 
+      alt="Vue de la villa de nuit" 
+      className="h-full w-full object-cover object-center" 
+    />
   </div>
-  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+  
+  {/* Overlay sombre : Lecture assurée sur mobile et dégradé chic sur desktop */}
+  <div className="absolute inset-0 bg-black/60 md:bg-gradient-to-r md:from-black/80 md:via-black/40 md:to-transparent" />
 
-  {/* CONTENEUR TEXTE : C'est ici que l'alignement se joue */}
+  {/* Conteneur Texte */}
   <div className="relative z-10 h-full container-luxe flex items-center justify-start">
     <motion.div 
-  initial={{ opacity: 0, x: -30 }} 
-  animate={{ opacity: 1, x: 0 }} 
-  transition={{ duration: 0.8 }}
-  className="max-w-2xl text-left"
->
-  {/* On ajoute 'break-words' et on ajuste la taille sur mobile */}
-  <h1 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[1.05] text-white mb-6 sm:mb-8 break-words">
-    {t.hero.title}
-  </h1>
-  
-  {/* On limite la largeur du paragraphe pour éviter qu'il ne s'étire trop */}
-  <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-white/90 leading-relaxed font-light max-w-lg">
-    {t.hero.sub}
-  </p>
-  
-  <div className="mt-8 sm:mt-12">
-    <Link 
-      to="/booking" 
-      className="inline-flex items-center gap-3 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 text-[10px] sm:text-xs tracking-[0.2em] sm:tracking-[0.25em] uppercase hover:bg-stone-200 transition"
+      initial={{ opacity: 0, x: -30 }} 
+      animate={{ opacity: 1, x: 0 }} 
+      transition={{ duration: 0.8 }}
+      className="max-w-2xl text-left"
     >
-      {t.hero.cta} <ArrowRight className="h-4 w-4" />
-    </Link>
-  </div>
-</motion.div>
+      <h1 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[1.05] text-white mb-6 sm:mb-8 break-words">
+        {t.hero.title}
+      </h1>
+      
+      <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-white/90 leading-relaxed font-light max-w-lg">
+        {t.hero.sub}
+      </p>
+      
+      <div className="mt-8 sm:mt-12">
+        <Link 
+          to="/booking" 
+          className="inline-flex items-center gap-3 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 text-[10px] sm:text-xs tracking-[0.2em] sm:tracking-[0.25em] uppercase hover:bg-stone-200 transition"
+        >
+          {t.hero.cta} <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </motion.div>
   </div>
 </section>
 
@@ -204,28 +205,41 @@ function Home() {
   </div>
 </section>
 
-        {/* --- SUITES SECTION --- */}
-        <section className="container-luxe py-28 md:py-40 border-t border-stone-900" id="suites">
-          <div className="mb-16 max-w-2xl">
-            <div className="eyebrow mb-6 text-stone-400">— {t.suites.eyebrow}</div>
-            <h2 className="text-4xl md:text-5xl font-display mb-6 text-white">{t.suites.title}</h2>
+       {/* --- SUITES SECTION --- */}
+<section className="container-luxe py-28 md:py-40 border-t border-stone-900" id="suites">
+  <div className="mb-16 max-w-2xl">
+    <div className="eyebrow mb-6 text-stone-400">— {t.suites.eyebrow}</div>
+    <h2 className="text-4xl md:text-5xl font-display mb-6 text-white">{t.suites.title}</h2>
+  </div>
+  
+  {/* 
+    grid-cols-1 : 1 par ligne sur mobile
+    md:grid-cols-2 : 2 par ligne sur ordinateur
+  */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+    {t.suites.items.map((suite: SuiteItem) => (
+      <Link key={suite.id} to={`/suites/${suite.id}`} className="group block overflow-hidden">
+        {/* 
+          aspect-[4/3] : Format paysage plus naturel qui affiche plus de l'image sur mobile
+          md:aspect-[3/2] : Un format un peu plus allongé pour le desktop
+        */}
+        <div className="aspect-[4/3] md:aspect-[3/2] overflow-hidden mb-6 bg-stone-950">
+          <img 
+            src={suiteImages[suite.id]} 
+            alt={suite.t} 
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
+          />
+        </div>
+        <div className="flex justify-between items-end border-b border-stone-900 pb-4">
+          <div>
+            <h3 className="text-xl md:text-2xl font-display text-white">{suite.t}</h3>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {t.suites.items.map((suite: SuiteItem) => (
-              <Link key={suite.id} to={`/suites/${suite.id}`} className="group block overflow-hidden">
-                <div className="aspect-[3/4] overflow-hidden mb-6 bg-stone-950">
-                  <img src={suiteImages[suite.id]} alt={suite.t} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                </div>
-                <div className="flex justify-between items-end border-b border-stone-900 pb-4">
-                  <div>
-                    <h3 className="text-xl font-display text-white">{suite.t}</h3>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-white opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+          <ArrowRight className="h-4 w-4 text-white opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+        </div>
+      </Link>
+    ))}
+  </div>
+</section>
 
         {/* --- CARROUSEL INFINI EN CONTINU --- */}
         <section className="py-28 md:py-40 border-t border-stone-900 bg-stone-950/40 overflow-hidden">
