@@ -10,7 +10,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import heroImg1 from "../assets/hero-1.JPG";
 import heroImg2 from "../assets/hero-2.JPG";
 
-import heroImg3 from "@/assets/Gallery/outside2.webp";
+import heroImg3 from "@/assets/gallery/outside2.webp";
 import g1 from "@/assets/jasminsuite/room-jasminsuite.webp";
 import g2 from "@/assets/azuresuite/room.webp";
 import g4 from "@/assets/olivesuite/room-view-olivesuite.webp";
