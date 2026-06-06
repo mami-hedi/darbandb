@@ -184,11 +184,27 @@ philosophy: {
       sub: "Tout ce que vous devez savoir pour préparer votre séjour exclusif à la villa.",
       items: [
         { q: "Quels sont les horaires de check-in et check-out ?", a: "Les arrivées s'effectuent à partir de 15h00 et les départs avant 11h00. Des aménagements horaires sont possibles sur demande préalable, selon nos disponibilités." },
-        { q: "La villa est-elle partagée avec d'autres clients ?", a: "Non. La villa Dar B&B est louée exclusivement dans son intégralité. Vous bénéficiez d'un accès totalement privé à la maison, aux 4 suites, au jardin et à la piscine." },
-        { q: "La piscine est-elle utilisable toute l'année ?", a: "La piscine à débordement est chauffée durant les mois de mi-saison (printemps et automne) pour garantir une baignade idéale. Pour la période hivernale, contactez-nous." },
-        { q: "Proposez-vous un service de transfert depuis l'aéroport ?", a: "Oui, notre conciergerie se charge d'organiser vos transferts privés depuis les aéroports de Tunis-Carthage ou d'Enfidha sur simple demande." }
+        { q: "La villa est-elle partagée avec d'autres clients ?", a: "Non. Dar B&B est louée exclusivement dans son intégralité. Vous bénéficiez d'un accès totalement privé à la maison, aux 4 suites, au jardin et à la piscine." },
+        { q: "La villa est-elle accessible facilement ?", a: "Oui, la villa dispose d'un accès par ascenseur privatif et d'un parking privé sécurisé est inclus pour nos hôtes." },
+        { q: "Quelle est la politique concernant le tabac et la musique ?", a: "La villa est strictement non-fumeur à l'intérieur. Pour préserver la quiétude des lieux, la musique extérieure est autorisée jusqu'à 23h." },
+        
+        { q: "Dois-je présenter une pièce d'identité ?", a: "Oui, une pièce d'identité en cours de validité est requise à votre arrivée pour l'enregistrement des hôtes." },
+        { q: "Proposez-vous un service de transfert ?", a: "Oui, notre conciergerie se charge d'organiser vos transferts privés depuis les aéroports de Tunis-Carthage ou d'Enfidha sur simple demande." }
       ]
     },
+
+    amenities: {
+  title: "Ce que propose ce logement",
+  categories: {
+    kitchen: "Cuisine et salle à manger",
+    comfort: "Confort et linge",
+    entertainment: "Divertissement et travail",
+    climate: "Climatisation et chauffage",
+    outdoor: "Extérieur et piscine",
+    safety: "Sécurité"
+  },
+  disclaimer: "Note : Des caméras de sécurité sont installées uniquement à l'extérieur (entrée, parking) pour assurer votre tranquillité. Aucune caméra à l'intérieur de la villa."
+},
     footer: { rights: "Tous droits réservés", made: "Conçu avec soin à Hammamet", info: "Informations pratiques" },
   },
   
@@ -371,11 +387,28 @@ philosophy: {
       sub: "Everything you need to know to prepare for your exclusive stay at the villa.",
       items: [
         { q: "What are the check-in and check-out times?", a: "Check-in is available from 3:00 PM, and check-out is before 11:00 AM. Flexible timings can be arranged upon request, subject to availability." },
-        { q: "Is the villa shared with other guests?", a: "No. Dar B&B is rented strictly on an exclusive basis. You will enjoy complete, private access to the entire estate, its 4 suites, guesthouse, and infinity pool." },
-        { q: "Is the pool available year-round?", a: "The infinity pool is heated during mid-season months (spring and autumn) to ensure optimal swimming comfort. For winter requests, please reach out to us." },
+        { q: "Is the villa shared with other guests?", a: "No. Dar B&B is rented strictly on an exclusive basis. You will enjoy complete, private access to the entire estate, its 4 suites, and the infinity pool." },
+        { q: "Is the villa easily accessible?", a: "Yes, the villa features a private elevator for easy access, and private secure parking is included for our guests." },
+        { q: "What is the policy on smoking and noise?", a: "The villa is strictly non-smoking indoors. To maintain the tranquility of the surroundings, outdoor music is allowed until 11:00 PM." },
+        
+        { q: "Do I need to present an ID?", a: "Yes, a valid ID is required upon arrival for guest registration." },
         { q: "Do you provide airport transfer services?", a: "Yes, our concierge team can easily arrange private transfers from either Tunis-Carthage or Enfidha airports upon request." }
       ]
     },
+
+    amenities: {
+  title: "What this place offers",
+  categories: {
+    kitchen: "Kitchen & Dining",
+    comfort: "Comfort & Bedding",
+    entertainment: "Entertainment & Work",
+    climate: "Air Conditioning & Heating",
+    outdoor: "Outdoor & Pool",
+    safety: "Safety"
+  },
+  disclaimer: "Note: Security cameras are installed outdoors only (entrance, parking) to ensure your privacy. No cameras inside the villa."
+},
+
     footer: { rights: "All rights reserved", made: "Crafted with care in Hammamet", info: "Practical Information" },
   },
 } as const;

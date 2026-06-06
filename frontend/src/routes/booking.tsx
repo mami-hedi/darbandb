@@ -904,7 +904,7 @@ function Booking() {
                         placeholder="exemple@domaine.com"
                       />
                     </Field>
-                    <Field label={t.contact.phone}>
+                    <Field label={t.contact.phone} required>
                       <input
                         required
                         type="tel"
@@ -913,7 +913,7 @@ function Booking() {
                           setFormData({ ...formData, phone: e.target.value })
                         }
                         className={inputCls}
-                        placeholder="+216 -- --- ---"
+                        placeholder="---- -- --- ---"
                       />
                     </Field>
                     <Field label={t.booking.guests}>

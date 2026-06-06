@@ -241,6 +241,56 @@ function Home() {
   </div>
 </section>
 
+{/*partie equipelments*/}
+
+<section className="container-luxe py-28 md:py-40 border-t border-stone-900">
+  <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+    <div className="max-w-xl">
+      <div className="eyebrow mb-6 text-stone-500">— {lang === "en" ? "Comfort" : "Commodités"}</div>
+      <h2 className="text-4xl md:text-5xl font-display text-white">
+        {lang === "en" ? "Everything you need" : "Ce que propose ce logement"}
+      </h2>
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    {[
+      { icon: ChefHat, title: "Cuisine & Salle à manger", items: ["Cuisine équipée", "Nespresso", "Vaisselle complète", "Four & Micro-ondes"] },
+      { icon: HeartPulse, title: "Confort & Linge", items: ["Linge de lit premium", "Serviettes de bain", "Dressing", "Fer à repasser"] },
+      { icon: Waves, title: "Divertissement", items: ["Smart TV Netflix", "Wifi Fibre", "Espace de travail", "Système audio"] },
+      { icon: Car, title: "Extérieur & Piscine", items: ["Piscine privée", "Chaises longues", "Espace repas extérieur"] },
+      { icon: Compass, title: "Sécurité", items: ["Parking privé", "Ascenseur privatif", "Détecteur de fumée", "Extincteur"] },
+      { icon: Wine, title: "Climatisation", items: ["Climatisation centrale", "Chauffage réversible"] }
+    ].map((cat, idx) => {
+      const Icon = cat.icon;
+      return (
+        <div key={idx} className="group p-8 border border-stone-900 hover:border-stone-700 transition-all duration-500 bg-stone-950/20">
+          <div className="h-12 w-12 mb-8 flex items-center justify-center border border-stone-800 text-stone-500 group-hover:text-white group-hover:border-white transition-all duration-500">
+            <Icon className="h-6 w-6" />
+          </div>
+          <h3 className="text-xl text-white font-display mb-6">{cat.title}</h3>
+          <ul className="space-y-3">
+            {cat.items.map((item, i) => (
+              <li key={i} className="text-stone-400 text-sm flex items-center gap-3 font-light">
+                <span className="h-px w-4 bg-stone-800 group-hover:bg-stone-500 transition-colors" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    })}
+  </div>
+  
+  <div className="mt-16 p-8 border-l-2 border-stone-800 bg-stone-900/20">
+    <p className="text-stone-400 text-sm italic font-light max-w-2xl">
+      {lang === "en" 
+        ? "Note: Security cameras are installed outdoors only (entrance, parking) to ensure your privacy. No cameras inside the villa." 
+        : "Note : Des caméras de sécurité sont installées uniquement à l'extérieur (entrée, parking) pour assurer votre tranquillité. Aucune caméra à l'intérieur de la villa."}
+    </p>
+  </div>
+</section>
+
         {/* --- CARROUSEL INFINI EN CONTINU --- */}
         <section className="py-28 md:py-40 border-t border-stone-900 bg-stone-950/40 overflow-hidden">
           <div className="container-luxe mb-12">
