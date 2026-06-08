@@ -244,11 +244,11 @@ function Contact() {
               <ul className="space-y-4 text-sm border-t border-neutral-800 pt-6">
                 <li className="flex items-start gap-4">
                   <MapPin className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
-                  <span className="text-neutral-200">Avenue de la Plage, 8050 Hammamet, Tunisie</span>
+                  <span className="text-neutral-200">Hammamet, Tunisie</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <Phone className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
-                  <span className="text-neutral-200">+216 72 000 000</span>
+                  <span className="text-neutral-200">+216 99 310 733</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <Mail className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" /> 
