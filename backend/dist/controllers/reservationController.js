@@ -5,6 +5,7 @@ const Reservation_1 = require("../models/Reservation");
 const emailService_1 = require("../services/emailService");
 const sequelize_1 = require("sequelize");
 const CustomPrice_1 = require("../models/CustomPrice");
+const whatsappService_1 = require("../services/whatsappService");
 class ReservationController {
     constructor() {
         this.emailService = new emailService_1.EmailService();
@@ -17,6 +18,7 @@ class ReservationController {
         this.getClients = this.getClients.bind(this);
         this.getDashboardStats = this.getDashboardStats.bind(this);
         this.getPricePreview = this.getPricePreview.bind(this);
+        this.saveInspection = this.saveInspection.bind(this); // NEW
     }
     // ─────────────────────────────────────────────────────────────
     // POST /reservations  — créer une réservation
@@ -24,7 +26,6 @@ class ReservationController {
     async createReservation(req, res) {
         try {
             const { firstName, lastName, email, phone, numberOfGuests, checkInDate, checkOutDate, specialRequests, depositAmount, } = req.body;
-            // Vérification disponibilité
             const conflict = await Reservation_1.Reservation.findOne({
                 where: {
                     status: { [sequelize_1.Op.in]: ['confirmed', 'pending'] },
@@ -45,7 +46,6 @@ class ReservationController {
                 return res.status(400).json({ success: false, error: 'Dates invalides.' });
             }
             const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
-            // Si depositAmount fourni on l'utilise, sinon 30% arrondi
             const deposit = depositAmount != null
                 ? parseFloat(depositAmount)
                 : Math.round(totalPrice * 0.3 * 100) / 100;
@@ -63,14 +63,15 @@ class ReservationController {
                 depositPaid: false,
                 depositPaidAt: null,
                 depositNotes: null,
+                inspection: null,
             });
-            try {
-                await this.emailService.sendConfirmationEmail(reservation);
-            }
-            catch (e) {
-                console.error('Email non envoyé:', e);
-            }
-            return res.status(201).json({ success: true, data: reservation });
+            // ✅ Réponse immédiate — les notifications partent après
+            res.status(201).json({ success: true, data: reservation });
+            // 🔔 Notifications fire & forget (ne bloquent pas la réponse)
+            this.emailService.sendConfirmationEmail(reservation)
+                .catch((e) => console.error('[Email] non envoyé :', e.message));
+            (0, whatsappService_1.notifyNewReservation)(reservation) // ← WhatsApp NEW
+                .catch((e) => console.error('[WA] createReservation :', e.message));
         }
         catch (error) {
             console.error('Erreur createReservation:', error);
@@ -104,7 +105,6 @@ class ReservationController {
     }
     // ─────────────────────────────────────────────────────────────
     // GET /reservations/price-preview?checkIn=&checkOut=
-    // Retourne le détail nuit par nuit + total (utile pour le formulaire)
     // ─────────────────────────────────────────────────────────────
     async getPricePreview(req, res) {
         try {
@@ -158,20 +158,22 @@ class ReservationController {
             if (!reservation)
                 return res.status(404).json({ success: false, error: 'Non trouvée' });
             const oldStatus = reservation.status;
-            // Recalcul prix si les dates changent
             if (updateData.checkInDate || updateData.checkOutDate) {
                 const nights = this.calculateNights(updateData.checkInDate || reservation.checkInDate, updateData.checkOutDate || reservation.checkOutDate);
                 if (nights > 0) {
                     updateData.totalPrice = await this.calculateTotalPrice(updateData.checkInDate || reservation.checkInDate, updateData.checkOutDate || reservation.checkOutDate);
-                    // Recalcul de l'acompte suggéré (si non surchargé explicitement)
                     if (updateData.depositAmount == null) {
                         updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
                     }
                 }
             }
             await reservation.update(updateData);
+            // 🔔 Annulation → notifier email + WhatsApp
             if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
-                await this.emailService.sendCancellationEmail(reservation);
+                this.emailService.sendCancellationEmail(reservation)
+                    .catch((e) => console.error('[Email] annulation :', e.message));
+                (0, whatsappService_1.notifyCancellation)(reservation) // ← WhatsApp NEW
+                    .catch((e) => console.error('[WA] annulation :', e.message));
             }
             return res.json({ success: true, data: reservation });
         }
@@ -201,7 +203,7 @@ class ReservationController {
         }
     }
     // ─────────────────────────────────────────────────────────────
-    // PATCH /reservations/:id/deposit  — NEW
+    // PATCH /reservations/:id/deposit
     // Body : { depositAmount?, depositPaid, depositNotes? }
     // ─────────────────────────────────────────────────────────────
     async updateDeposit(req, res) {
@@ -224,6 +226,32 @@ class ReservationController {
             return res.json({ success: true, data: reservation });
         }
         catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    }
+    // ─────────────────────────────────────────────────────────────
+    // PATCH /reservations/:id/inspection  — NEW
+    // Body : { inspection: Record<string, { status, note }> }
+    // ─────────────────────────────────────────────────────────────
+    async saveInspection(req, res) {
+        try {
+            const { id } = req.params;
+            const { inspection } = req.body;
+            if (!inspection || typeof inspection !== 'object') {
+                return res.status(400).json({
+                    success: false,
+                    error: "Le champ 'inspection' est requis et doit être un objet.",
+                });
+            }
+            const reservation = await Reservation_1.Reservation.findByPk(id);
+            if (!reservation) {
+                return res.status(404).json({ success: false, error: 'Réservation non trouvée.' });
+            }
+            await reservation.update({ inspection });
+            return res.json({ success: true, data: reservation });
+        }
+        catch (error) {
+            console.error('Erreur saveInspection:', error);
             return res.status(500).json({ success: false, error: error.message });
         }
     }
@@ -293,7 +321,6 @@ class ReservationController {
                 group: ['source'],
                 raw: true,
             });
-            // Acomptes en attente
             const pendingDeposits = await Reservation_1.Reservation.count({
                 where: {
                     status: { [sequelize_1.Op.in]: ['pending', 'confirmed'] },

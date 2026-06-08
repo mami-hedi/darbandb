@@ -3,7 +3,7 @@ import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 import { Op, fn, col, Sequelize } from 'sequelize';
 import { CustomPrice } from '../models/CustomPrice';
-import { notifyNewReservation, notifyCancellation } from '../services/whatsappService';
+// import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
 
 export class ReservationController {
   private emailService: EmailService;
@@ -19,7 +19,7 @@ export class ReservationController {
     this.getClients              = this.getClients.bind(this);
     this.getDashboardStats       = this.getDashboardStats.bind(this);
     this.getPricePreview         = this.getPricePreview.bind(this);
-    this.saveInspection          = this.saveInspection.bind(this); // NEW
+    this.saveInspection          = this.saveInspection.bind(this);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -77,15 +77,13 @@ export class ReservationController {
       inspection: null,
     });
  
-    // ✅ Réponse immédiate — les notifications partent après
     res.status(201).json({ success: true, data: reservation });
  
-    // 🔔 Notifications fire & forget (ne bloquent pas la réponse)
     this.emailService.sendConfirmationEmail(reservation)
       .catch((e: any) => console.error('[Email] non envoyé :', e.message));
  
-    notifyNewReservation(reservation) // ← WhatsApp NEW
-      .catch((e: any) => console.error('[WA] createReservation :', e.message));
+    // notifyNewReservation(reservation)
+    //   .catch((e: any) => console.error('[WA] createReservation :', e.message));
  
   } catch (error: any) {
     console.error('Erreur createReservation:', error);
@@ -194,13 +192,12 @@ export class ReservationController {
  
     await reservation.update(updateData);
  
-    // 🔔 Annulation → notifier email + WhatsApp
     if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
       this.emailService.sendCancellationEmail(reservation)
         .catch((e: any) => console.error('[Email] annulation :', e.message));
  
-      notifyCancellation(reservation) // ← WhatsApp NEW
-        .catch((e: any) => console.error('[WA] annulation :', e.message));
+      // notifyCancellation(reservation)
+      //   .catch((e: any) => console.error('[WA] annulation :', e.message));
     }
  
     return res.json({ success: true, data: reservation });
@@ -262,7 +259,7 @@ export class ReservationController {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PATCH /reservations/:id/inspection  — NEW
+  // PATCH /reservations/:id/inspection
   // Body : { inspection: Record<string, { status, note }> }
   // ─────────────────────────────────────────────────────────────
   async saveInspection(req: Request, res: Response) {

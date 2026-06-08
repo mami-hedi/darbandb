@@ -13,6 +13,7 @@ import { initAdminModel, Admin } from './models/Admin';
 import { initCustomPriceModel } from './models/CustomPrice';
 import { initRateRuleModel } from './models/RateRule';
 import { initManualBlockModel } from './models/ManualBlock';
+//import './services/whatsappservice';
 
 import availabilityRoutes from './routes/Availability';
 import reservationRoutes from './routes/reservations';

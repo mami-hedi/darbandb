@@ -14,7 +14,7 @@ const initReservationModel = (sequelize) => {
         },
         refNumber: {
             type: sequelize_1.DataTypes.STRING,
-            unique: true,
+            unique: 'reservations_refNumber_unique',
             allowNull: false,
         },
         firstName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
@@ -47,23 +47,30 @@ const initReservationModel = (sequelize) => {
             type: sequelize_1.DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 0,
-            comment: 'Montant de l\'acompte demandé (ex : 30% du totalPrice)',
+            comment: "Montant de l'acompte demandé (ex : 30% du totalPrice)",
         },
         depositPaid: {
             type: sequelize_1.DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
-            comment: 'Vrai si l\'acompte a été encaissé',
+            comment: "Vrai si l'acompte a été encaissé",
         },
         depositPaidAt: {
             type: sequelize_1.DataTypes.DATE,
             allowNull: true,
-            comment: 'Date de réception de l\'acompte',
+            comment: "Date de réception de l'acompte",
         },
         depositNotes: {
             type: sequelize_1.DataTypes.TEXT,
             allowNull: true,
             comment: 'Notes libres sur le mode de paiement, référence virement, etc.',
+        },
+        // ── Inspection checkout ──
+        inspection: {
+            type: sequelize_1.DataTypes.JSON,
+            allowNull: true,
+            defaultValue: null,
+            comment: 'Résultat inspection checkout par zone (Suite 4, Cuisine, Piscine, etc.)',
         },
     }, {
         sequelize,

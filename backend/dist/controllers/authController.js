@@ -6,27 +6,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.login = void 0;
 const Admin_1 = require("../models/Admin");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const isProd = process.env.NODE_ENV === 'production';
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        // 1. Chercher l'admin
+        console.log('🔐 Login attempt:', email); // ← log
         const admin = await Admin_1.Admin.findOne({ where: { email } });
+        console.log('👤 Admin found:', admin ? 'oui' : 'non'); // ← log
         if (!admin) {
             return res.status(401).json({ message: "Identifiants invalides" });
         }
-        // 2. Vérifier le mot de passe
         const isMatch = await admin.comparePassword(password);
+        console.log('🔑 Password match:', isMatch); // ← log
         if (!isMatch) {
             return res.status(401).json({ message: "Identifiants invalides" });
         }
-        // 3. Générer le token JWT
+        // ... reste du code
         const token = jsonwebtoken_1.default.sign({ id: admin.id, role: 'admin' }, process.env.JWT_SECRET || 'secret_ultra_securise_123', { expiresIn: '2h' });
-        // 4. Envoyer le token via un cookie sécurisé (HttpOnly)
         res.cookie('admin_token', token, {
-            httpOnly: true, // Interdit l'accès via JS
-            secure: process.env.NODE_ENV === 'production', // Uniquement en HTTPS en prod
-            sameSite: 'strict', // Protection contre le CSRF
-            maxAge: 2 * 60 * 60 * 1000 // 2 heures
+            httpOnly: true,
+            secure: isProd, // HTTPS uniquement en prod
+            sameSite: isProd ? 'none' : 'strict', // 'none' obligatoire cross-domain en prod
+            maxAge: 2 * 60 * 60 * 1000,
         });
         return res.json({ success: true, message: "Connexion réussie" });
     }

@@ -8,7 +8,7 @@ exports.BlogPost = BlogPost;
 const initBlogPostModel = (sequelize) => {
     BlogPost.init({
         id: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-        slug: { type: sequelize_1.DataTypes.STRING(255), unique: true, allowNull: false },
+        slug: { type: sequelize_1.DataTypes.STRING(255), unique: 'blogposts_slug_unique', allowNull: false },
         date: {
             type: sequelize_1.DataTypes.STRING(50),
             allowNull: false,
