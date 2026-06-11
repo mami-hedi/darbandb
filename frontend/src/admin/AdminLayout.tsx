@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { 
   LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, 
-  Coins, LogOut, ExternalLink, ShieldCheck, KeyRound, X, Eye, EyeOff, Menu 
+  Coins, LogOut, ShieldCheck, KeyRound, X, Eye, EyeOff, Menu, Bell // <--- Ajoutez Bell
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
-
+// Ajouter après l'import de { cn }
+import { useReservationNotifications } from "@/hooks/useReservationNotifications";
+import { Toaster } from "sonner"; // Ajoutez cette ligne
+import { NotificationPanel } from "@/components/NotificationPanel";
 // --- Configuration ---
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
@@ -82,28 +85,51 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 // --- Composant : Shell Principal ---
 function Shell() {
+  // 1. TOUS les hooks doivent être en haut, sans condition
   const { logout } = useAdminAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  
+  // Appel du hook de notifications ici, tout en haut
+  const { notifications, unreadCount, markAllRead } = useReservationNotifications();
+const [showNotif, setShowNotif] = useState(false);
+  
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   
   const isLoginPage = pathname === "/admin/login";
 
   const handleLogout = () => { logout(); navigate({ to: "/" }); setIsMenuOpen(false); };
 
   return (
-    <div className={cn("min-h-screen bg-secondary/30 flex", isLoginPage ? "items-center justify-center" : "flex-col md:flex-row")}>
-      {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
+    <div className={cn(
+      "min-h-screen bg-secondary/30 flex",
+      isLoginPage ? "items-center justify-center" : "flex-col md:flex-row"
+    )}>
+      {/* Toast container — notifications SSE */}
+      <Toaster position="top-right" richColors closeButton />
+
+      {showChangePwd && (
+        <ChangePasswordModal onClose={() => setShowChangePwd(false)} />
+      )}
 
       {!isLoginPage && (
         <>
           {/* Header Mobile */}
           <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4 h-16 z-30">
-            <button onClick={() => setIsMenuOpen(true)}><Menu className="h-6 w-6" /></button>
-            <div className="font-display text-xl">B&B Admin</div>
-            <div className="w-6" />
-          </div>
+              <button onClick={() => setIsMenuOpen(true)}><Menu className="h-6 w-6" /></button>
+              <div className="font-display text-xl">B&B Admin</div>
+              {/* Icône Notification Mobile */}
+              <NotificationPanel
+  notifications={notifications}
+  unreadCount={unreadCount}
+  markAllRead={markAllRead}
+  open={showNotif}
+  onToggle={() => setShowNotif(v => !v)}
+  onClose={() => setShowNotif(false)}
+/>
+            </div>
 
           {/* Menu Mobile Overlay */}
           {isMenuOpen && (
@@ -120,6 +146,14 @@ function Shell() {
                 ))}
               </nav>
               <div className="border-t border-background/20 pt-6 space-y-4">
+                <div className="text-center pt-2">
+            <a 
+              href="/" 
+              className="text-xs text-muted-foreground  underline underline-offset-4 transition-colors"
+            >
+              Aller vers le site web
+            </a>
+          </div>
                 <button onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }} className="flex items-center gap-4 text-lg"><KeyRound size={20} /> Mot de passe</button>
                 <button onClick={handleLogout} className="flex items-center gap-4 text-lg text-red-400"><LogOut size={20} /> Déconnexion</button>
               </div>
@@ -132,6 +166,15 @@ function Shell() {
               <div className="font-display text-2xl">B&B</div>
               <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Espace Admin</div>
             </div>
+            {/* Icône Notification Desktop */}
+                <NotificationPanel
+  notifications={notifications}
+  unreadCount={unreadCount}
+  markAllRead={markAllRead}
+  open={showNotif}
+  onToggle={() => setShowNotif(v => !v)}
+  onClose={() => setShowNotif(false)}
+/>
             <nav className="flex-1 p-4 space-y-1">
               {nav.map(n => (
                 <Link key={n.to} to={n.to} className={cn("flex items-center gap-3 px-4 py-3 text-sm rounded-sm", pathname === n.to ? "bg-background/10" : "hover:bg-background/5")}>
@@ -140,6 +183,14 @@ function Shell() {
               ))}
             </nav>
             <div className="p-4 border-t border-background/10 space-y-2">
+              <div className="text-center pt-2">
+            <a 
+              href="/" 
+              className="text-xs text-muted-foreground  underline underline-offset-4 transition-colors"
+            >
+              Aller vers le site web
+            </a>
+          </div>
               <button onClick={() => setShowChangePwd(true)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-background/5"><KeyRound size={16} /> Mot de passe</button>
               <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm bg-background text-foreground"><LogOut size={16} /> Déconnexion</button>
             </div>

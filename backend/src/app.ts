@@ -14,6 +14,11 @@ import { initCustomPriceModel } from './models/CustomPrice';
 import { initRateRuleModel } from './models/RateRule';
 import { initManualBlockModel } from './models/ManualBlock';
 //import './services/whatsappservice';
+import { notifier } from './services/sseService'; 
+import { initContactModel } from './models/Contact';   // ← ajouter
+
+import { initSettingModel } from './models/Setting'; // ✅ AJOUTER
+import contactRoutes from './routes/contactRoutes';     // ← ajouter
 
 import availabilityRoutes from './routes/Availability';
 import reservationRoutes from './routes/reservations';
@@ -21,6 +26,11 @@ import blogRoutes from './routes/blogRoutes';
 import authRoutes from './routes/authRoutes';
 import priceRoutes from './routes/priceRoutes';
 import rateRulesRouter from './routes/rateRules';
+import sseRoutes from './routes/sseRoutes';
+
+
+
+
 
 const app = express();
 app.set('trust proxy', 1); // ← fix Render proxy
@@ -59,6 +69,8 @@ initAdminModel(sequelize);
 initCustomPriceModel(sequelize);
 initRateRuleModel(sequelize);
 initManualBlockModel(sequelize);
+initContactModel(sequelize);
+initSettingModel(sequelize); 
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -67,6 +79,8 @@ app.use('/api/reservations', reservationRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/settings', priceRoutes);
 app.use('/api/rates', rateRulesRouter);
+app.use('/api/contacts', contactRoutes);
+app.use('/api/sse', sseRoutes);
 
 // Seed Admin (Sécurisé par variable d'environnement)
 const seedAdmin = async () => {

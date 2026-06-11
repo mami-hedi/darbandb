@@ -97,6 +97,14 @@ function Login() {
           <p className="text-xs text-muted-foreground text-center">
             Accès réservé à l'administrateur
           </p>
+          <div className="text-center pt-2">
+            <a 
+              href="/" 
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+            >
+              Aller vers le site web
+            </a>
+          </div>
         </div>
       </form>
     </div>

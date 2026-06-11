@@ -3,6 +3,7 @@ import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 import { Op, fn, col, Sequelize } from 'sequelize';
 import { CustomPrice } from '../models/CustomPrice';
+import { notifier } from '../services/sseService';
 // import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
 
 export class ReservationController {
@@ -78,6 +79,14 @@ export class ReservationController {
     });
  
     res.status(201).json({ success: true, data: reservation });
+    notifier.emit('new-reservation', {
+  id:        reservation.id,
+  guestName: `${reservation.firstName} ${reservation.lastName}`,
+  checkIn:   reservation.checkInDate,
+  checkOut:  reservation.checkOutDate,
+  guests:    reservation.numberOfGuests,
+  status:    'En attente',
+});
  
     this.emailService.sendConfirmationEmail(reservation)
       .catch((e: any) => console.error('[Email] non envoyé :', e.message));

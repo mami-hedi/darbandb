@@ -49,6 +49,8 @@ const [showMobileList, setShowMobileList] = useState(false);
   // Initialiser les inputs avec les valeurs récupérées
   const prevDayRef = useRef<Date | undefined>(undefined);
 
+  const basePriceInitialized = useRef(false);
+
 useEffect(() => {
   if (selectedDay && selectedDay !== prevDayRef.current) {
     prevDayRef.current = selectedDay;
@@ -59,10 +61,11 @@ useEffect(() => {
 
   // Initialiser uniquement au chargement initial ou quand editingBasePrice devient vrai
 useEffect(() => {
-  if (!editingBasePrice) {
+  if (!basePriceInitialized.current && basePrice > 0) {
     setBasePriceInput(basePrice.toString());
+    basePriceInitialized.current = true;
   }
-}, [basePrice, editingBasePrice]);
+}, [basePrice]);
 
   // Mettre à jour la liste des tarifs customisés
   useEffect(() => {
@@ -152,34 +155,68 @@ useEffect(() => {
 
   // Sauvegarder le prix de base
   const handleSaveBasePrice = async () => {
-    const price = parseApiPrice(basePriceInput);
-    if (price <= 0) {
-      showNotification("error", "Le prix doit être supérieur à 0");
-      return;
-    }
+  const price = parseApiPrice(basePriceInput);
+  if (price <= 0) {
+    showNotification("error", "Le prix doit être supérieur à 0");
+    return;
+  }
 
-    setIsSaving(true);
-    try {
-      const response = await fetch(`${API_BASE}/settings/base-price`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ price }),
-      });
+  setIsSaving(true);
+  try {
+    const response = await fetch(`${API_BASE}/settings/base-price`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ price }),
+    });
 
-      if (response.ok) {
-        showNotification("success", `Prix de base défini à ${price} DT`);
-        setEditingBasePrice(false);
-        refetch();
-      } else {
-        showNotification("error", "Erreur lors de la sauvegarde du prix de base");
-      }
-    } catch (error) {
-      console.error(error);
-      showNotification("error", "Erreur de connexion au serveur");
-    } finally {
-      setIsSaving(false);
+    if (response.ok) {
+      showNotification("success", `Prix de base défini à ${price} DT`);
+      setEditingBasePrice(false);
+      basePriceInitialized.current = false; // ✅ permet la mise à jour depuis la DB
+      refetch();
+    } else {
+      showNotification("error", "Erreur lors de la sauvegarde du prix de base");
     }
-  };
+  } catch (error) {
+    console.error(error);
+    showNotification("error", "Erreur de connexion au serveur");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+// Jours avec prix customisé
+const customPriceDays = Object.keys(customPrices).map(
+  (dateStr) => new Date(dateStr + 'T12:00:00')
+);
+
+// Rendu personnalisé de chaque case
+const renderDay = (date: Date) => {
+  const dateStr  = format(date, "yyyy-MM-dd");
+  const isCustom = customPrices[dateStr] !== undefined;
+  const price    = isCustom ? customPrices[dateStr] : basePrice;
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      width: "100%", height: "100%", gap: "1px",
+    }}>
+      <span style={{ fontSize: "12px", fontWeight: 600, lineHeight: 1 }}>
+        {date.getDate()}
+      </span>
+      <span style={{
+        fontSize: "7px", padding: "1px 3px", borderRadius: "3px",
+        backgroundColor: isCustom ? "rgba(251,191,36,0.2)" : "transparent",
+        color:           isCustom ? "#fbbf24" : "#6b7280",
+        fontWeight:      isCustom ? 700 : 400,
+        whiteSpace:      "nowrap",
+      }}>
+        {price} DT
+      </span>
+    </div>
+  );
+};
 
   return (
     
@@ -353,16 +390,77 @@ useEffect(() => {
                       }
                     }
                   `}</style>
-                  <DayPicker
-                    mode="single"
-                    selected={selectedDay}
-                    onSelect={setSelectedDay}
-                    onMonthChange={setDisplayMonth}
-                    month={displayMonth}
-                    locale={fr}
-                    className="admin-calendar"
-                  />
+                    <DayPicker
+  mode="single"
+  selected={selectedDay}
+  onSelect={setSelectedDay}
+  onMonthChange={setDisplayMonth}
+  month={displayMonth}
+  locale={fr}
+  className="admin-calendar"
+  showOutsideDays={false}
+  components={{
+    DayButton: ({ day, modifiers, ...props }: any) => {
+      const dateStr  = format(day.date, "yyyy-MM-dd");
+      const isCustom = customPrices[dateStr] !== undefined;
+      const price    = isCustom ? customPrices[dateStr] : basePrice;
+
+      return (
+        <button
+          {...props}
+          style={{
+            width:        "40px",
+            height:       "44px",
+            padding:      0,
+            borderRadius: "6px",
+            background:   "transparent",
+            border:       "none",
+            cursor:       "pointer",
+            color:        "inherit",
+          }}
+        >
+          <div style={{
+            display:        "flex",
+            flexDirection:  "column",
+            alignItems:     "center",
+            justifyContent: "center",
+            width:          "100%",
+            height:         "100%",
+            gap:            "1px",
+          }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, lineHeight: 1 }}>
+              {day.date.getDate()}
+            </span>
+            <span style={{
+              fontSize:        "7px",
+              padding:         "1px 3px",
+              borderRadius:    "3px",
+              backgroundColor: isCustom ? "rgba(251,191,36,0.2)" : "transparent",
+              color:           isCustom ? "#fbbf24" : "#6b7280",
+              fontWeight:      isCustom ? 700 : 400,
+              whiteSpace:      "nowrap",
+            }}>
+              {price} DT
+            </span>
+          </div>
+        </button>
+      );
+    },
+  }}
+/>
                 </div>
+
+                {/* Légende */}
+<div className="flex items-center gap-4 justify-center mb-4">
+  <div className="flex items-center gap-2">
+    <span className="w-3 h-3 rounded-sm bg-amber-400/20 border border-amber-400/50 flex-shrink-0" />
+    <span className="text-xs text-neutral-400">Prix customisé</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <span className="w-3 h-3 rounded-sm bg-neutral-700 border border-neutral-600 flex-shrink-0" />
+    <span className="text-xs text-neutral-400">Prix de base</span>
+  </div>
+</div>
 
                 {/* Infos date sélectionnée - Compact sur mobile */}
                 {selectedDay && (
