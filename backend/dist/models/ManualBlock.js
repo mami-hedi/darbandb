@@ -13,9 +13,9 @@ const initManualBlockModel = (sequelize) => {
             autoIncrement: true,
         },
         date: {
-            type: sequelize_1.DataTypes.DATEONLY, // Stocke uniquement YYYY-MM-DD, sans heure
+            type: sequelize_1.DataTypes.DATEONLY,
             allowNull: false,
-            unique: true, // Une seule entrée par date
+            unique: 'manual_blocks_date_unique', // ← nom fixe, évite les index dupliqués
         },
         note: {
             type: sequelize_1.DataTypes.TEXT,

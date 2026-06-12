@@ -255,12 +255,12 @@ function Home() {
 
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
     {[
-      { icon: ChefHat, title: "Cuisine & Salle à manger", items: ["Cuisine équipée", "Nespresso", "Vaisselle complète", "Four & Micro-ondes"] },
-      { icon: HeartPulse, title: "Confort & Linge", items: ["Linge de lit premium", "Serviettes de bain", "Dressing", "Fer à repasser"] },
-      { icon: Waves, title: "Divertissement", items: ["Smart TV Netflix", "Wifi Fibre", "Espace de travail", "Système audio"] },
-      { icon: Car, title: "Extérieur & Piscine", items: ["Piscine privée", "Chaises longues", "Espace repas extérieur"] },
-      { icon: Compass, title: "Sécurité", items: ["Parking privé", "Ascenseur privatif", "Détecteur de fumée", "Extincteur"] },
-      { icon: Wine, title: "Climatisation", items: ["Climatisation centrale", "Chauffage réversible"] }
+      { icon: ChefHat,    key: "kitchen",       items: lang === "en" ? ["Fully equipped kitchen", "Nespresso", "Full dishware", "Oven & Microwave"]           : ["Cuisine équipée", "Nespresso", "Vaisselle complète", "Four & Micro-ondes"] },
+      { icon: HeartPulse, key: "comfort",        items: lang === "en" ? ["Premium bed linen", "Bath towels", "Walk-in closet", "Iron"]                         : ["Linge de lit premium", "Serviettes de bain", "Dressing", "Fer à repasser"] },
+      { icon: Waves,      key: "entertainment",  items: lang === "en" ? ["Smart TV Netflix", "Fiber Wifi", "Workspace", "Audio system"]                        : ["Smart TV Netflix", "Wifi Fibre", "Espace de travail", "Système audio"] },
+      { icon: Car,        key: "outdoor",        items: lang === "en" ? ["Private pool", "Sun loungers", "Outdoor dining area"]                                : ["Piscine privée", "Chaises longues", "Espace repas extérieur"] },
+      { icon: Compass,    key: "safety",         items: lang === "en" ? ["Private parking", "Private elevator", "Smoke detector", "Fire extinguisher"]         : ["Parking privé", "Ascenseur privatif", "Détecteur de fumée", "Extincteur"] },
+      { icon: Wine,       key: "climate",        items: lang === "en" ? ["Central air conditioning", "Reversible heating"]                                     : ["Climatisation centrale", "Chauffage réversible"] },
     ].map((cat, idx) => {
       const Icon = cat.icon;
       return (

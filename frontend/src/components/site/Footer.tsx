@@ -22,15 +22,15 @@ export function Footer() {
             />
           </div>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground leading-relaxed">
-            {t.footer.made}. Avenue de la Plage, 8050 Hammamet, Tunisie.
+            {t.footer.made}. Hammamet, Tunisie.
           </p>
           <div className="mt-6 flex gap-4">
             <a href="#" aria-label="Instagram" className="p-2 hover:opacity-60"><Instagram className="h-4 w-4" /></a>
             <a href="#" aria-label="Facebook" className="p-2 hover:opacity-60"><Facebook className="h-4 w-4" /></a>
-            <a href="mailto:hello@bnb-hammamet.tn" aria-label="Email" className="p-2 hover:opacity-60"><Mail className="h-4 w-4" /></a>
+            <a href="mailto:experience@bnb-villa.com" aria-label="Email" className="p-2 hover:opacity-60"><Mail className="h-4 w-4" /></a>
             {/* Icône officielle WhatsApp en SVG épuré */}
             <a 
-              href="https://wa.me/21658146177" 
+              href="https://wa.me/21699310733" 
               target="_blank" 
               rel="noopener noreferrer" 
               aria-label="WhatsApp" 
@@ -73,7 +73,7 @@ export function Footer() {
         <div>
           <div className="eyebrow mb-4">Contact</div>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>+216 72 000 000</li>
+            <li>+216 99 310 733</li>
             <li>experience@bnb-villa.com</li>
           </ul>
         </div>

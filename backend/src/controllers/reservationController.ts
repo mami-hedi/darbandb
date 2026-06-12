@@ -3,6 +3,8 @@ import { Reservation as ReservationModel } from '../models/Reservation';
 import { EmailService } from '../services/emailService';
 import { Op, fn, col, Sequelize } from 'sequelize';
 import { CustomPrice } from '../models/CustomPrice';
+import { notifier } from '../services/sseService';
+// import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
 
 export class ReservationController {
   private emailService: EmailService;
@@ -18,74 +20,85 @@ export class ReservationController {
     this.getClients              = this.getClients.bind(this);
     this.getDashboardStats       = this.getDashboardStats.bind(this);
     this.getPricePreview         = this.getPricePreview.bind(this);
-    this.saveInspection          = this.saveInspection.bind(this); // NEW
+    this.saveInspection          = this.saveInspection.bind(this);
   }
 
   // ─────────────────────────────────────────────────────────────
   // POST /reservations  — créer une réservation
   // ─────────────────────────────────────────────────────────────
   async createReservation(req: Request, res: Response) {
-    try {
-      const {
-        firstName, lastName, email, phone,
-        numberOfGuests, checkInDate, checkOutDate,
-        specialRequests, depositAmount,
-      } = req.body;
-
-      // Vérification disponibilité
-      const conflict = await ReservationModel.findOne({
-        where: {
-          status: { [Op.in]: ['confirmed', 'pending'] },
-          [Op.and]: [
-            { checkInDate:  { [Op.lt]: checkOutDate } },
-            { checkOutDate: { [Op.gt]: checkInDate  } },
-          ],
-        },
+  try {
+    const {
+      firstName, lastName, email, phone,
+      numberOfGuests, checkInDate, checkOutDate,
+      specialRequests, depositAmount,
+    } = req.body;
+ 
+    const conflict = await ReservationModel.findOne({
+      where: {
+        status: { [Op.in]: ['confirmed', 'pending'] },
+        [Op.and]: [
+          { checkInDate:  { [Op.lt]: checkOutDate } },
+          { checkOutDate: { [Op.gt]: checkInDate  } },
+        ],
+      },
+    });
+    if (conflict) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ces dates sont déjà réservées ou en attente.',
       });
-      if (conflict) {
-        return res.status(400).json({
-          success: false,
-          error: 'Ces dates sont déjà réservées ou en attente.',
-        });
-      }
-
-      const nights = this.calculateNights(checkInDate, checkOutDate);
-      if (nights <= 0) {
-        return res.status(400).json({ success: false, error: 'Dates invalides.' });
-      }
-
-      const totalPrice  = await this.calculateTotalPrice(checkInDate, checkOutDate);
-      const deposit = depositAmount != null
-        ? parseFloat(depositAmount)
-        : Math.round(totalPrice * 0.3 * 100) / 100;
-
-      const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-      const reservation = await ReservationModel.create({
-        refNumber,
-        firstName, lastName, email, phone,
-        numberOfGuests: parseInt(numberOfGuests) || 2,
-        checkInDate, checkOutDate,
-        totalPrice,
-        specialRequests,
-        source: 'direct',
-        status: 'pending',
-        depositAmount: deposit,
-        depositPaid: false,
-        depositPaidAt: null,
-        depositNotes: null,
-        inspection: null,
-      });
-
-      try { await this.emailService.sendConfirmationEmail(reservation); }
-      catch (e) { console.error('Email non envoyé:', e); }
-
-      return res.status(201).json({ success: true, data: reservation });
-    } catch (error: any) {
-      console.error('Erreur createReservation:', error);
-      return res.status(500).json({ success: false, error: error.message });
     }
+ 
+    const nights = this.calculateNights(checkInDate, checkOutDate);
+    if (nights <= 0) {
+      return res.status(400).json({ success: false, error: 'Dates invalides.' });
+    }
+ 
+    const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+    const deposit = depositAmount != null
+      ? parseFloat(depositAmount)
+      : Math.round(totalPrice * 0.3 * 100) / 100;
+ 
+    const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+ 
+    const reservation = await ReservationModel.create({
+      refNumber,
+      firstName, lastName, email, phone,
+      numberOfGuests: parseInt(numberOfGuests) || 2,
+      checkInDate, checkOutDate,
+      totalPrice,
+      specialRequests,
+      source: 'direct',
+      status: 'pending',
+      depositAmount: deposit,
+      depositPaid: false,
+      depositPaidAt: null,
+      depositNotes: null,
+      inspection: null,
+    });
+ 
+    res.status(201).json({ success: true, data: reservation });
+    notifier.emit('new-reservation', {
+  id:        reservation.id,
+  guestName: `${reservation.firstName} ${reservation.lastName}`,
+  checkIn:   reservation.checkInDate,
+  checkOut:  reservation.checkOutDate,
+  guests:    reservation.numberOfGuests,
+  status:    'En attente',
+});
+ 
+    this.emailService.sendConfirmationEmail(reservation)
+      .catch((e: any) => console.error('[Email] non envoyé :', e.message));
+ 
+    // notifyNewReservation(reservation)
+    //   .catch((e: any) => console.error('[WA] createReservation :', e.message));
+ 
+  } catch (error: any) {
+    console.error('Erreur createReservation:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
+}
 
   // ─────────────────────────────────────────────────────────────
   // GET /reservations
@@ -162,40 +175,45 @@ export class ReservationController {
   // PUT /reservations/:id  — modifier une réservation
   // ─────────────────────────────────────────────────────────────
   async updateReservation(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const updateData = { ...req.body };
-      const reservation = await ReservationModel.findByPk(id);
-      if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
-
-      const oldStatus = reservation.status;
-
-      if (updateData.checkInDate || updateData.checkOutDate) {
-        const nights = this.calculateNights(
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    const reservation = await ReservationModel.findByPk(id);
+    if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
+ 
+    const oldStatus = reservation.status;
+ 
+    if (updateData.checkInDate || updateData.checkOutDate) {
+      const nights = this.calculateNights(
+        updateData.checkInDate  || reservation.checkInDate,
+        updateData.checkOutDate || reservation.checkOutDate,
+      );
+      if (nights > 0) {
+        updateData.totalPrice = await this.calculateTotalPrice(
           updateData.checkInDate  || reservation.checkInDate,
           updateData.checkOutDate || reservation.checkOutDate,
         );
-        if (nights > 0) {
-          updateData.totalPrice = await this.calculateTotalPrice(
-            updateData.checkInDate  || reservation.checkInDate,
-            updateData.checkOutDate || reservation.checkOutDate,
-          );
-          if (updateData.depositAmount == null) {
-            updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
-          }
+        if (updateData.depositAmount == null) {
+          updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
         }
       }
-
-      await reservation.update(updateData);
-
-      if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
-        await this.emailService.sendCancellationEmail(reservation);
-      }
-      return res.json({ success: true, data: reservation });
-    } catch (error: any) {
-      return res.status(500).json({ success: false, error: error.message });
     }
+ 
+    await reservation.update(updateData);
+ 
+    if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
+      this.emailService.sendCancellationEmail(reservation)
+        .catch((e: any) => console.error('[Email] annulation :', e.message));
+ 
+      // notifyCancellation(reservation)
+      //   .catch((e: any) => console.error('[WA] annulation :', e.message));
+    }
+ 
+    return res.json({ success: true, data: reservation });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
   }
+}
 
   // ─────────────────────────────────────────────────────────────
   // PATCH /reservations/:id/status
@@ -250,7 +268,7 @@ export class ReservationController {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PATCH /reservations/:id/inspection  — NEW
+  // PATCH /reservations/:id/inspection
   // Body : { inspection: Record<string, { status, note }> }
   // ─────────────────────────────────────────────────────────────
   async saveInspection(req: Request, res: Response) {
