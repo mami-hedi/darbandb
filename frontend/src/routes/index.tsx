@@ -6,6 +6,9 @@ import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
 
+import { NewsletterPopup } from "@/components/NewsletterPopup";
+
+
 // Assets
 import heroImg1 from "../assets/hero-1.JPG";
 import heroImg2 from "../assets/hero-2.JPG";
@@ -431,6 +434,7 @@ function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+      <NewsletterPopup />
     </SiteLayout>
   );
 }

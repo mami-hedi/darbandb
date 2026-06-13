@@ -18,6 +18,10 @@ import { notifier } from './services/sseService';
 import { initContactModel } from './models/Contact';   // ← ajouter
 
 import { initSettingModel } from './models/Setting'; // ✅ AJOUTER
+import { initPromoCodeModel } from './models/PromoCode';
+import { initSubscriberModel } from './models/Subscriber';
+
+
 import contactRoutes from './routes/contactRoutes';     // ← ajouter
 
 import availabilityRoutes from './routes/Availability';
@@ -27,6 +31,9 @@ import authRoutes from './routes/authRoutes';
 import priceRoutes from './routes/priceRoutes';
 import rateRulesRouter from './routes/rateRules';
 import sseRoutes from './routes/sseRoutes';
+import promosRouter from './routes/promos';
+
+import subscribersRouter from './routes/subscribers';
 
 
 
@@ -70,7 +77,9 @@ initCustomPriceModel(sequelize);
 initRateRuleModel(sequelize);
 initManualBlockModel(sequelize);
 initContactModel(sequelize);
-initSettingModel(sequelize); 
+initSettingModel(sequelize);
+initPromoCodeModel(sequelize); 
+initSubscriberModel(sequelize);
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -81,6 +90,8 @@ app.use('/api/settings', priceRoutes);
 app.use('/api/rates', rateRulesRouter);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/sse', sseRoutes);
+app.use('/api/promos', promosRouter);
+app.use('/api/subscribers', subscribersRouter);
 
 // Seed Admin (Sécurisé par variable d'environnement)
 const seedAdmin = async () => {

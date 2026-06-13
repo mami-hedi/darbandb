@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { 
   LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, 
-  Coins, LogOut, ShieldCheck, KeyRound, X, Eye, EyeOff, Menu, Bell // <--- Ajoutez Bell
+  Coins, LogOut, ShieldCheck, KeyRound, X, Eye, EyeOff, Tag, Menu, Bell // <--- Ajoutez Bell
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
@@ -14,14 +14,17 @@ import { NotificationPanel } from "@/components/NotificationPanel";
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+
+
 const nav: NavItem[] = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/reservations", label: "Réservations", icon: CalendarRange },
-  { to: "/admin/clients", label: "Clients", icon: Users },
-  { to: "/admin/tarifs", label: "Tarifs", icon: Coins },
-  { to: "/admin/check-house", label: "Vérifier État", icon: ShieldCheck },
-  { to: "/admin/blog", label: "Blog", icon: FileText },
-  { to: "/admin/availability", label: "Disponibilité", icon: CalendarCheck },
+  { to: "/admin",              label: "Dashboard",      icon: LayoutDashboard, exact: true },
+  { to: "/admin/reservations", label: "Réservations",   icon: CalendarRange },
+  { to: "/admin/clients",      label: "Clients",        icon: Users },
+  { to: "/admin/tarifs",       label: "Tarifs",         icon: Coins },
+  { to: "/admin/check-house",  label: "Vérifier État",  icon: ShieldCheck },
+  { to: "/admin/blog",         label: "Blog",           icon: FileText },
+  { to: "/admin/availability", label: "Disponibilité",  icon: CalendarCheck },
+  { to: "/admin/promotions",   label: "Promotions",     icon: Tag },  // ← nouveau
 ];
 
 // --- Composant : Modal Changement de mot de passe ---

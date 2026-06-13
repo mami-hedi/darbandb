@@ -192,6 +192,21 @@ philosophy: {
         { q: "Proposez-vous un service de transfert ?", a: "Oui, notre conciergerie se charge d'organiser vos transferts privés depuis les aéroports de Tunis-Carthage ou d'Enfidha sur simple demande." }
       ]
     },
+    newsletter: {
+      popup: {
+        eyebrow:       "Offres exclusives",
+        title:         "Restez au courant\ndes meilleures offres",
+        subtitle:      "Recevez nos codes promo, séjours spéciaux et actualités de Dar B&B — directement dans votre boîte mail.",
+        placeholder:   "votre@email.com",
+        cta:           "S'abonner",
+        privacy:       "Pas de spam. Désabonnement en un clic.",
+        successTitle:  "Bienvenue !",
+        successText:   "Vous êtes abonné(e) aux offres exclusives de Dar B&B.",
+        errorInvalid:  "Adresse email invalide.",
+        errorDuplicate:"Cette adresse est déjà abonnée.",
+        close:         "Fermer",
+      },
+    },
 
     amenities: {
   title: "Ce que propose ce logement",
@@ -394,6 +409,22 @@ philosophy: {
         { q: "Do I need to present an ID?", a: "Yes, a valid ID is required upon arrival for guest registration." },
         { q: "Do you provide airport transfer services?", a: "Yes, our concierge team can easily arrange private transfers from either Tunis-Carthage or Enfidha airports upon request." }
       ]
+    },
+
+    newsletter: {
+      popup: {
+        eyebrow:       "Exclusive offers",
+        title:         "Stay ahead of\nthe best deals",
+        subtitle:      "Get our promo codes, special stays and Dar B&B news — straight to your inbox.",
+        placeholder:   "your@email.com",
+        cta:           "Subscribe",
+        privacy:       "No spam. Unsubscribe anytime.",
+        successTitle:  "Welcome!",
+        successText:   "You are now subscribed to exclusive Dar B&B offers.",
+        errorInvalid:  "Please enter a valid email address.",
+        errorDuplicate:"This email is already subscribed.",
+        close:         "Close",
+      },
     },
 
     amenities: {

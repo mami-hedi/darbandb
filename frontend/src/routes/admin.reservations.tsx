@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { AdminDateRangePicker } from "@/components/AdminDateRangePicker";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -658,13 +659,27 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               </div>
             </section>
             <section>
-              <h3 className={sectionTitle}>Séjour</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Field label="Arrivée *"><input type="date" className={inputCls} value={form.checkInDate} onChange={e => setForm({...form, checkInDate: e.target.value})} /></Field>
-                <Field label="Départ *"><input type="date" className={inputCls} value={form.checkOutDate} onChange={e => setForm({...form, checkOutDate: e.target.value})} /></Field>
-                <Field label="Nombre d'invités"><input type="number" min={1} max={20} className={inputCls} value={form.numberOfGuests} onChange={e => setForm({...form, numberOfGuests: parseInt(e.target.value) || 1})} /></Field>
-              </div>
-            </section>
+  <h3 className={sectionTitle}>Séjour</h3>
+  <AdminDateRangePicker
+    checkIn={form.checkInDate}
+    checkOut={form.checkOutDate}
+    onChange={(checkIn, checkOut) =>
+      setForm(f => ({ ...f, checkInDate: checkIn, checkOutDate: checkOut }))
+    }
+  />
+  <div className="mt-3">
+    <Field label="Nombre d'invités">
+      <input
+        type="number"
+        min={1}
+        max={20}
+        className={inputCls}
+        value={form.numberOfGuests}
+        onChange={e => setForm({ ...form, numberOfGuests: parseInt(e.target.value) || 1 })}
+      />
+    </Field>
+  </div>
+</section>
             <section>
               <h3 className={sectionTitle}>Tarif</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
