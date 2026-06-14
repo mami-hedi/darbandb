@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { AdminDateRangePicker } from "@/components/AdminDateRangePicker";
+import { AdminDateRangePicker } from "@/components/Admindaterangepicker";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
