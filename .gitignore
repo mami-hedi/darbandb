@@ -1,0 +1,30 @@
+# Dépendances
+node_modules/
+
+# Environnement (variables secrètes)
+.env
+.env.local
+.env.development
+.env.production
+backend/.env
+backend/.env.local
+backend/.env.development
+backend/.env.production
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
