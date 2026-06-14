@@ -25,7 +25,7 @@ export function Footer() {
             {t.footer.made}. Hammamet, Tunisie.
           </p>
           <div className="mt-6 flex gap-4">
-            <a href="#" aria-label="Instagram" className="p-2 hover:opacity-60"><Instagram className="h-4 w-4" /></a>
+            <a href="https://www.instagram.com/bnbvilla" aria-label="Instagram" target="_blank" className="p-2 hover:opacity-60"><Instagram className="h-4 w-4" /></a>
             <a href="#" aria-label="Facebook" className="p-2 hover:opacity-60"><Facebook className="h-4 w-4" /></a>
             <a href="mailto:experience@bnb-villa.com" aria-label="Email" className="p-2 hover:opacity-60"><Mail className="h-4 w-4" /></a>
             {/* Icône officielle WhatsApp en SVG épuré */}

@@ -1064,7 +1064,7 @@ function Booking() {
                 </li>
                 <li className="flex items-center gap-3 text-neutral-300">
                   <Phone className="h-3.5 w-3.5 text-neutral-500" />
-                  +216 72 000 000
+                  +216 99 310 733
                 </li>
                 <li className="flex items-center gap-3 text-neutral-300">
                   <Mail className="h-3.5 w-3.5 text-neutral-500" />
