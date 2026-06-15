@@ -2,19 +2,17 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { 
   LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, 
-  Coins, LogOut, ShieldCheck, KeyRound, X, Eye, EyeOff, Tag, Menu, Bell // <--- Ajoutez Bell
+  Coins, LogOut, ShieldCheck, KeyRound, X, Tag, Menu
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
-// Ajouter après l'import de { cn }
 import { useReservationNotifications } from "@/hooks/useReservationNotifications";
-import { Toaster } from "sonner"; // Ajoutez cette ligne
+import { Toaster } from "sonner";
 import { NotificationPanel } from "@/components/NotificationPanel";
-// --- Configuration ---
+
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
-
 
 const nav: NavItem[] = [
   { to: "/admin",              label: "Dashboard",      icon: LayoutDashboard, exact: true },
@@ -24,20 +22,18 @@ const nav: NavItem[] = [
   { to: "/admin/check-house",  label: "Vérifier État",  icon: ShieldCheck },
   { to: "/admin/blog",         label: "Blog",           icon: FileText },
   { to: "/admin/availability", label: "Disponibilité",  icon: CalendarCheck },
-  { to: "/admin/promotions",   label: "Promotions",     icon: Tag },  // ← nouveau
+  { to: "/admin/promotions",   label: "Promotions",     icon: Tag },
 ];
 
-// --- Composant : Modal Changement de mot de passe ---
+// ─── Modal mot de passe ───────────────────────────────────────
+
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd] = useState("");
+  const [newPwd, setNewPwd]         = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [err, setErr]               = useState("");
+  const [success, setSuccess]       = useState(false);
 
   const handleSubmit = async () => {
     if (newPwd !== confirmPwd) return setErr("Les mots de passe ne correspondent pas.");
@@ -49,14 +45,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         credentials: "include",
         body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
       });
-      if (res.ok) {
-        setSuccess(true);
-        setTimeout(onClose, 1500);
-      } else {
-        const data = await res.json();
-        setErr(data.message || "Erreur lors du changement.");
-      }
-    } catch { setErr("Erreur de connexion."); } finally { setLoading(false); }
+      if (res.ok) { setSuccess(true); setTimeout(onClose, 1500); }
+      else { const d = await res.json(); setErr(d.message || "Erreur."); }
+    } catch { setErr("Erreur de connexion."); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -71,9 +63,9 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             <p className="text-center text-emerald-600 font-semibold text-sm">✓ Succès !</p>
           ) : (
             <>
-              <input type={showCurrent ? "text" : "password"} placeholder="Actuel" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
-              <input type={showNew ? "text" : "password"} placeholder="Nouveau" value={newPwd} onChange={e => setNewPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
-              <input type={showConfirm ? "text" : "password"} placeholder="Confirmer" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm" />
+              <input type="password" placeholder="Actuel"    value={currentPwd}  onChange={e => setCurrentPwd(e.target.value)}  className="w-full border rounded-lg p-2.5 text-sm" />
+              <input type="password" placeholder="Nouveau"   value={newPwd}       onChange={e => setNewPwd(e.target.value)}       className="w-full border rounded-lg p-2.5 text-sm" />
+              <input type="password" placeholder="Confirmer" value={confirmPwd}   onChange={e => setConfirmPwd(e.target.value)}   className="w-full border rounded-lg p-2.5 text-sm" />
               {err && <p className="text-xs text-red-500">{err}</p>}
               <button onClick={handleSubmit} disabled={loading} className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-bold">
                 {loading ? "..." : "Enregistrer"}
@@ -86,23 +78,19 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// --- Composant : Shell Principal ---
-function Shell() {
-  // 1. TOUS les hooks doivent être en haut, sans condition
-  const { logout } = useAdminAuth();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  
-  // Appel du hook de notifications ici, tout en haut
-  const { notifications, unreadCount, markAllRead } = useReservationNotifications();
-const [showNotif, setShowNotif] = useState(false);
-  
-  const [showChangePwd, setShowChangePwd] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  
-  const isLoginPage = pathname === "/admin/login";
+// ─── Shell ────────────────────────────────────────────────────
 
+function Shell() {
+  const { logout }       = useAdminAuth();
+  const navigate         = useNavigate();
+  const { pathname }     = useLocation();
+  const { notifications, unreadCount, markAllRead } = useReservationNotifications();
+
+  const [showNotif,     setShowNotif]     = useState(false);
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [isMenuOpen,    setIsMenuOpen]    = useState(false);
+
+  const isLoginPage = pathname === "/admin/login";
   const handleLogout = () => { logout(); navigate({ to: "/" }); setIsMenuOpen(false); };
 
   return (
@@ -110,92 +98,140 @@ const [showNotif, setShowNotif] = useState(false);
       "min-h-screen bg-secondary/30 flex",
       isLoginPage ? "items-center justify-center" : "flex-col md:flex-row"
     )}>
-      {/* Toast container — notifications SSE */}
       <Toaster position="top-right" richColors closeButton />
 
-      {showChangePwd && (
-        <ChangePasswordModal onClose={() => setShowChangePwd(false)} />
-      )}
+      {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
 
       {!isLoginPage && (
         <>
-          {/* Header Mobile */}
-          <div className="md:hidden flex items-center justify-between bg-foreground text-background p-4 h-16 z-30">
-              <button onClick={() => setIsMenuOpen(true)}><Menu className="h-6 w-6" /></button>
-              <div className="font-display text-xl">B&B Admin</div>
-              {/* Icône Notification Mobile */}
-              <NotificationPanel
-  notifications={notifications}
-  unreadCount={unreadCount}
-  markAllRead={markAllRead}
-  open={showNotif}
-  onToggle={() => setShowNotif(v => !v)}
-  onClose={() => setShowNotif(false)}
-/>
-            </div>
+          {/* ── Header mobile — fond noir, notification à droite ── */}
+          <div className="md:hidden flex items-center justify-between bg-neutral-950 text-white px-4 h-14 z-30 border-b border-neutral-800">
+            {/* Gauche : burger */}
+            <button
+              onClick={() => setIsMenuOpen(true)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
 
-          {/* Menu Mobile Overlay */}
+            {/* Centre : logo */}
+            <span className="font-display text-lg tracking-widest">B&B Admin</span>
+
+            {/* Droite : notification */}
+            <NotificationPanel
+              notifications={notifications}
+              unreadCount={unreadCount}
+              markAllRead={markAllRead}
+              open={showNotif}
+              onToggle={() => setShowNotif(v => !v)}
+              onClose={() => setShowNotif(false)}
+            />
+          </div>
+
+          {/* ── Menu mobile overlay ── */}
           {isMenuOpen && (
-            <div className="md:hidden fixed inset-0 z-[400] bg-foreground text-background p-6 flex flex-col">
+            <div className="md:hidden fixed inset-0 z-[400] bg-neutral-950 text-white p-6 flex flex-col">
               <div className="flex justify-between items-center mb-10">
-                <span className="font-display text-xl">Menu</span>
-                <button onClick={() => setIsMenuOpen(false)}><X size={32} /></button>
+                <span className="font-display text-xl tracking-widest">Menu</span>
+                <button
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X size={24} />
+                </button>
               </div>
-              <nav className="flex-1 space-y-6">
+              <nav className="flex-1 space-y-1">
                 {nav.map(n => (
-                  <Link key={n.to} to={n.to} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 text-xl">
-                    <n.icon /> {n.label}
+                  <Link
+                    key={n.to}
+                    to={n.to}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-4 px-4 py-3 rounded-lg text-base transition-colors",
+                      pathname === n.to
+                        ? "bg-white/10 text-white"
+                        : "text-white/70 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <n.icon size={18} /> {n.label}
                   </Link>
                 ))}
               </nav>
-              <div className="border-t border-background/20 pt-6 space-y-4">
-                <div className="text-center pt-2">
-            <a 
-              href="/" 
-              className="text-xs text-muted-foreground  underline underline-offset-4 transition-colors"
-            >
-              Aller vers le site web
-            </a>
-          </div>
-                <button onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }} className="flex items-center gap-4 text-lg"><KeyRound size={20} /> Mot de passe</button>
-                <button onClick={handleLogout} className="flex items-center gap-4 text-lg text-red-400"><LogOut size={20} /> Déconnexion</button>
+              <div className="border-t border-white/10 pt-6 space-y-2">
+                <a href="/" className="block text-center text-xs text-white/40 hover:text-white/70 underline underline-offset-4 transition-colors pb-2">
+                  Aller vers le site web
+                </a>
+                <button
+                  onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  <KeyRound size={16} /> Mot de passe
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+                >
+                  <LogOut size={16} /> Déconnexion
+                </button>
               </div>
             </div>
           )}
 
-          {/* Sidebar Desktop */}
-          <aside className="hidden md:flex w-64 flex-col bg-foreground text-background min-h-screen shrink-0">
-            <div className="p-6 border-b border-background/10">
-              <div className="font-display text-2xl">B&B</div>
-              <div className="text-[0.65rem] tracking-[0.3em] uppercase opacity-60 mt-1">Espace Admin</div>
+          {/* ── Sidebar desktop — notification en haut à droite du header ── */}
+          <aside className="hidden md:flex w-64 flex-col bg-neutral-950 text-white min-h-screen shrink-0 border-r border-neutral-800">
+
+            {/* Brand + notification côte à côte */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+              <div>
+                <div className="font-display text-2xl tracking-wider">B&B</div>
+                <div className="text-[0.6rem] tracking-[0.3em] uppercase text-white/40 mt-0.5">Espace Admin</div>
+              </div>
+              {/* Notification — alignée à droite dans le header du sidebar */}
+              <NotificationPanel
+                notifications={notifications}
+                unreadCount={unreadCount}
+                markAllRead={markAllRead}
+                open={showNotif}
+                onToggle={() => setShowNotif(v => !v)}
+                onClose={() => setShowNotif(false)}
+              />
             </div>
-            {/* Icône Notification Desktop */}
-                <NotificationPanel
-  notifications={notifications}
-  unreadCount={unreadCount}
-  markAllRead={markAllRead}
-  open={showNotif}
-  onToggle={() => setShowNotif(v => !v)}
-  onClose={() => setShowNotif(false)}
-/>
-            <nav className="flex-1 p-4 space-y-1">
+
+            {/* Nav */}
+            <nav className="flex-1 p-4 space-y-0.5">
               {nav.map(n => (
-                <Link key={n.to} to={n.to} className={cn("flex items-center gap-3 px-4 py-3 text-sm rounded-sm", pathname === n.to ? "bg-background/10" : "hover:bg-background/5")}>
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-colors",
+                    pathname === n.to
+                      ? "bg-white/10 text-white font-medium"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  )}
+                >
                   <n.icon size={16} /> {n.label}
                 </Link>
               ))}
             </nav>
-            <div className="p-4 border-t border-background/10 space-y-2">
-              <div className="text-center pt-2">
-            <a 
-              href="/" 
-              className="text-xs text-muted-foreground  underline underline-offset-4 transition-colors"
-            >
-              Aller vers le site web
-            </a>
-          </div>
-              <button onClick={() => setShowChangePwd(true)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-background/5"><KeyRound size={16} /> Mot de passe</button>
-              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm bg-background text-foreground"><LogOut size={16} /> Déconnexion</button>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 space-y-1">
+              <a href="/" className="block text-center text-xs text-white/30 hover:text-white/60 underline underline-offset-4 transition-colors py-2">
+                Aller vers le site web
+              </a>
+              <button
+                onClick={() => setShowChangePwd(true)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <KeyRound size={16} /> Mot de passe
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+              >
+                <LogOut size={16} /> Déconnexion
+              </button>
             </div>
           </aside>
         </>

@@ -1,6 +1,7 @@
 // ============================================
 // Page Booking — Complète avec validation
 //   des dates bloquées (bilingue FR/EN)
+//   + Code promotionnel (pct) avec récap sidebar
 // @/routes/booking.tsx
 //
 // FONCTIONNALITÉS :
@@ -11,6 +12,8 @@
 //  • handleSubmit    → filet de sécurité final côté client
 //  • getUnavailableMessage → message bilingue fr/en avec la date formatée
 //  • Tarification dynamique par jour
+//  • Code promo → validation via POST /api/promos/validate
+//    affiche sous-total / réduction / total final dans la sidebar
 // ============================================
 
 import { createFileRoute, useSearch } from "@tanstack/react-router";
@@ -18,7 +21,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Mail, MapPin, Phone, Check, ExternalLink,
   Calendar as CalendarIcon, User, Globe, X,
-  AlertTriangle, RefreshCw,
+  AlertTriangle, RefreshCw, Tag,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useLang } from "@/i18n/LanguageContext";
@@ -99,6 +102,17 @@ function Booking() {
     message: string;
   }>({ isOpen: false, type: "success", title: "", message: "" });
 
+  // ── Code promo ────────────────────────────────────────────────────────────
+  const [promoCode, setPromoCode] = useState("");
+  const [promoResult, setPromoResult] = useState<{
+    pct: number;
+    code: string;
+    description: string;
+  } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoApplied, setPromoApplied] = useState(false);
+
   const AIRBNB_URL = "https://www.airbnb.fr/h/villabnb";
 
   // ── Fetch tarifs ──────────────────────────────────────────────────────────
@@ -173,7 +187,6 @@ function Booking() {
     [customPrices, basePrice]
   );
 
-  // Set de strings pour lookup O(1)
   const unavailableDateSet = useMemo(
     () => new Set(unavailableDates.map((d) => format(d, "yyyy-MM-dd"))),
     [unavailableDates]
@@ -192,9 +205,7 @@ function Booking() {
       });
       return {
         title:
-          lang === "fr"
-            ? "Date non disponible"
-            : "Date unavailable",
+          lang === "fr" ? "Date non disponible" : "Date unavailable",
         message:
           lang === "fr"
             ? `Le ${formatted} est non disponible. Vous pouvez choisir une autre date.`
@@ -204,25 +215,16 @@ function Booking() {
     [lang]
   );
 
-  // ── Interception de la sélection : valide le range en temps réel ─────────
-  //
-  // POURQUOI cette logique :
-  // DayPicker mode "range" : la prop `disabled` empêche le clic DIRECT sur
-  // une date rouge, mais pas qu'elle soit ENGLOBÉE dans un range from→to.
-  // Ex : checkin=10 juin, checkout=15 juin, le 12 est bloqué → range accepté
-  //      par DayPicker mais invalide → on doit scanner l'intervalle complet.
+  // ── Interception de la sélection ─────────────────────────────────────────
   const handleRangeSelect = useCallback(
     (newRange: DateRange | undefined) => {
-      // Cas 1 : reset complet (clic sur from déjà sélectionné)
       if (!newRange) {
         setRange(undefined);
         return;
       }
 
-      // Cas 2 : seul le "from" vient d'être posé (premier clic)
       if (newRange.from && !newRange.to) {
         if (isDateUnavailable(newRange.from)) {
-          // Filet de sécurité (disabled devrait déjà l'empêcher)
           const { title, message } = getUnavailableMessage(newRange.from);
           setModalStatus({ isOpen: true, type: "warning", title, message });
           setRange(undefined);
@@ -232,8 +234,6 @@ function Booking() {
         return;
       }
 
-      // Cas 3 : range complet from→to (deuxième clic = checkout choisi)
-      // → Scanner TOUTES les dates de l'intervalle inclusif
       if (newRange.from && newRange.to) {
         let blockedDay: Date | undefined;
         try {
@@ -241,22 +241,19 @@ function Booking() {
             start: newRange.from,
             end: newRange.to,
           });
-          // Première date bloquée trouvée dans l'intervalle
           blockedDay = days.find((day) => isDateUnavailable(day));
         } catch {
-          // eachDayOfInterval lève si start > end — on laisse passer
+          // eachDayOfInterval lève si start > end
         }
 
         if (blockedDay) {
           const { title, message } = getUnavailableMessage(blockedDay);
           setModalStatus({ isOpen: true, type: "warning", title, message });
-          // Conserver le "from" valide — l'utilisateur choisit un autre "to"
           setRange({ from: newRange.from, to: undefined });
           return;
         }
       }
 
-      // Aucune date bloquée dans le range → valide
       setRange(newRange);
     },
     [isDateUnavailable, getUnavailableMessage]
@@ -264,7 +261,8 @@ function Booking() {
 
   // ── Calcul total ──────────────────────────────────────────────────────────
   const calculateTotalDetails = () => {
-    if (!range?.from || !range?.to) return { total: 0, nights: 0, breakdowns: [] };
+    if (!range?.from || !range?.to)
+      return { total: 0, nights: 0, breakdowns: [] };
     try {
       const days = eachDayOfInterval({ start: range.from, end: range.to });
       if (days.length <= 1) return { total: 0, nights: 0, breakdowns: [] };
@@ -288,6 +286,52 @@ function Booking() {
     breakdowns: priceBreakdowns,
   } = calculateTotalDetails();
 
+  // ── Calcul promo ──────────────────────────────────────────────────────────
+  const discountAmount = promoResult
+    ? Math.round(totalPrice * promoResult.pct) / 100
+    : 0;
+  const finalPrice = totalPrice - discountAmount;
+
+  // ── Validation code promo ─────────────────────────────────────────────────
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    setPromoResult(null);
+    setPromoApplied(false);
+    try {
+      const res = await fetch(`${API_BASE}/promos/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim().toUpperCase() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPromoResult(data.data); // { pct, code, description }
+        setPromoApplied(true);
+      } else {
+        setPromoError(
+          lang === "fr"
+            ? data.message || "Code invalide ou expiré."
+            : data.message || "Invalid or expired code."
+        );
+      }
+    } catch {
+      setPromoError(
+        lang === "fr" ? "Erreur de connexion." : "Connection error."
+      );
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleResetPromo = () => {
+    setPromoApplied(false);
+    setPromoResult(null);
+    setPromoCode("");
+    setPromoError("");
+  };
+
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,8 +346,6 @@ function Booking() {
       return;
     }
 
-    // ── Filet de sécurité : re-vérifie que l'intervalle ne contient pas
-    //    de date bloquée (au cas où les données auraient changé depuis la sélection)
     try {
       const days = eachDayOfInterval({ start: range.from, end: range.to });
       const blockedDay = days.find((day) => isDateUnavailable(day));
@@ -329,7 +371,9 @@ function Booking() {
           checkInDate: range.from,
           checkOutDate: range.to,
           specialRequests: formData.message,
-          totalPrice,
+          totalPrice: finalPrice,
+          promoCode: promoResult?.code || null,
+          discountPct: promoResult?.pct || 0,
         }),
       });
 
@@ -344,6 +388,7 @@ function Booking() {
           guests: "2",
           message: "",
         });
+        handleResetPromo();
         setModalStatus({
           isOpen: true,
           type: "success",
@@ -373,15 +418,8 @@ function Booking() {
   };
 
   // ── Dates désactivées pour DayPicker ─────────────────────────────────────
-  // On passe les dates indisponibles directement + { before: today }.
-  // DayPicker les rend non-cliquables ET les exclut du range highlight,
-  // mais onSelect peut quand même recevoir un range qui les englobe
-  // → c'est handleRangeSelect qui intercepte ce cas.
   const disabledDays = [{ before: today }, ...unavailableDates];
 
-  // ── Modifiers personnalisés : marque "unavailable" pour le DayButton ──────
-  // Permet au DayButton de savoir qu'une date est bloquée (manuellement
-  // ou réservée) sans refaire le lookup dans unavailableDates.
   const modifiersUnavailable = useMemo(
     () => ({ unavailable: unavailableDates }),
     [unavailableDates]
@@ -399,9 +437,7 @@ function Booking() {
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
             <div className="bg-neutral-900 border border-neutral-800 p-6 md:p-8 max-w-md w-full shadow-2xl relative animate-scale-up">
               <button
-                onClick={() =>
-                  setModalStatus((p) => ({ ...p, isOpen: false }))
-                }
+                onClick={() => setModalStatus((p) => ({ ...p, isOpen: false }))}
                 className="absolute top-4 right-4 text-neutral-400 hover:text-white transition"
               >
                 <X className="h-5 w-5" />
@@ -416,12 +452,8 @@ function Booking() {
                       : "bg-red-950/50 border-red-800 text-red-400"
                   }`}
                 >
-                  {modalStatus.type === "success" && (
-                    <Check className="h-8 w-8" />
-                  )}
-                  {modalStatus.type === "warning" && (
-                    <AlertTriangle className="h-8 w-8" />
-                  )}
+                  {modalStatus.type === "success" && <Check className="h-8 w-8" />}
+                  {modalStatus.type === "warning" && <AlertTriangle className="h-8 w-8" />}
                   {modalStatus.type === "error" && <X className="h-8 w-8" />}
                 </div>
                 <h3 className="font-display text-2xl mb-2 text-white">
@@ -431,9 +463,7 @@ function Booking() {
                   {modalStatus.message}
                 </p>
                 <button
-                  onClick={() =>
-                    setModalStatus((p) => ({ ...p, isOpen: false }))
-                  }
+                  onClick={() => setModalStatus((p) => ({ ...p, isOpen: false }))}
                   className="w-full bg-white text-black py-3 text-xs tracking-widest uppercase font-semibold hover:bg-neutral-200 transition"
                 >
                   {t.booking.modalClose}
@@ -489,9 +519,7 @@ function Booking() {
                 <div>
                   <h3
                     className={`text-base font-bold tracking-wide uppercase font-display ${
-                      bookingMethod === "direct"
-                        ? "text-white"
-                        : "text-neutral-400"
+                      bookingMethod === "direct" ? "text-white" : "text-neutral-400"
                     }`}
                   >
                     {t.booking.directTitle}
@@ -531,18 +559,14 @@ function Booking() {
                 <div>
                   <h3
                     className={`text-base font-bold tracking-wide uppercase font-display ${
-                      bookingMethod === "airbnb"
-                        ? "text-white"
-                        : "text-neutral-400"
+                      bookingMethod === "airbnb" ? "text-white" : "text-neutral-400"
                     }`}
                   >
                     {t.booking.airbnbTitle}
                   </h3>
                   <p
                     className={`text-xs mt-1 leading-relaxed ${
-                      bookingMethod === "airbnb"
-                        ? "text-white/80"
-                        : "text-neutral-400"
+                      bookingMethod === "airbnb" ? "text-white/80" : "text-neutral-400"
                     }`}
                   >
                     {t.booking.airbnbDesc}
@@ -592,9 +616,7 @@ function Booking() {
                     {lang === "fr" ? "Sélectionné" : "Selected"}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="text-amber-400 font-bold text-[10px]">
-                      DT
-                    </span>
+                    <span className="text-amber-400 font-bold text-[10px]">DT</span>
                     {lang === "fr" ? "Tarif spécial" : "Special rate"}
                   </span>
                 </div>
@@ -668,10 +690,6 @@ function Booking() {
                     color: #000 !important;
                     border-radius: 0 !important;
                   }
-                  /* ── Date bloquée dans un range highlight ──
-                     DayPicker peut colorer en range_middle une date
-                     bloquée si le survol la traverse. On réécrase
-                     pour conserver l'apparence rose + curseur interdit. */
                   .booking-rdp .rdp-day_range_middle[data-unavailable] button,
                   .booking-rdp .rdp-day_range_middle.rdp-day_disabled button {
                     background: rgba(136, 19, 55, 0.25) !important;
@@ -720,11 +738,6 @@ function Booking() {
                         const isMid = modifiers.range_middle;
                         const isDisabled = isPast || isUnavail;
 
-                        // ── Détecte si ce jour disponible est dans un range
-                        //    qui traverse une date bloquée (feedback visuel hover).
-                        //    Dans ce cas, on empêche la sélection et on affiche
-                        //    un curseur "interdit" même sur les jours disponibles
-                        //    qui seraient après la date bloquée.
                         const rangeFromStr = range?.from
                           ? format(range.from, "yyyy-MM-dd")
                           : null;
@@ -771,7 +784,6 @@ function Booking() {
                               !isPast && isUnavail
                                 ? "bg-rose-950/30 border border-rose-800/40 cursor-not-allowed pointer-events-none"
                                 : "",
-                              // Jour dispo mais après une date bloquée dans le range hover
                               !isPast && !isUnavail && isAfterBlockInRange
                                 ? "opacity-40 cursor-not-allowed border border-rose-900/30"
                                 : "",
@@ -952,6 +964,68 @@ function Booking() {
                     />
                   </Field>
 
+                  {/* ── Code promo ── */}
+                  {range?.from && range?.to && totalNights > 0 && (
+                    <div className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-3">
+                      <p className="text-[10px] tracking-[0.2em] uppercase text-neutral-400 font-bold flex items-center gap-2">
+                        <Tag className="h-3.5 w-3.5 text-amber-400" />
+                        {lang === "fr" ? "Code promotionnel" : "Promo code"}
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoCode}
+                          onChange={(e) => {
+                            setPromoCode(e.target.value.toUpperCase());
+                            if (promoApplied) handleResetPromo();
+                          }}
+                          disabled={promoApplied}
+                          placeholder={lang === "fr" ? "ex: NOEL25" : "ex: SUMMER10"}
+                          className="flex-1 bg-neutral-900 border border-neutral-700 text-white px-4 py-3 text-sm font-mono uppercase outline-none focus:border-white transition placeholder:normal-case placeholder:text-neutral-600 disabled:opacity-50"
+                        />
+                        {promoApplied ? (
+                          <button
+                            type="button"
+                            onClick={handleResetPromo}
+                            className="px-4 py-3 border border-neutral-700 text-neutral-400 text-xs hover:border-rose-500 hover:text-rose-400 transition"
+                            title={lang === "fr" ? "Retirer le code" : "Remove code"}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleApplyPromo}
+                            disabled={!promoCode.trim() || promoLoading}
+                            className="px-5 py-3 bg-white text-black text-xs font-bold tracking-widest uppercase hover:bg-neutral-200 transition disabled:opacity-40"
+                          >
+                            {promoLoading
+                              ? <RefreshCw className="h-4 w-4 animate-spin" />
+                              : lang === "fr" ? "Appliquer" : "Apply"
+                            }
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Feedback erreur */}
+                      {promoError && (
+                        <p className="text-xs text-rose-400 flex items-center gap-1.5">
+                          <X className="h-3.5 w-3.5 shrink-0" /> {promoError}
+                        </p>
+                      )}
+
+                      {/* Feedback succès */}
+                      {promoApplied && promoResult && (
+                        <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+                          <Check className="h-3.5 w-3.5 shrink-0" />
+                          {lang === "fr"
+                            ? `Code "${promoResult.code}" appliqué — ${promoResult.pct}% de réduction !`
+                            : `Code "${promoResult.code}" applied — ${promoResult.pct}% off!`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
                     disabled={sent || !range?.from || !range?.to}
@@ -999,53 +1073,84 @@ function Booking() {
           {/* ── Sidebar ── */}
           <aside className="lg:col-span-4 space-y-6">
 
-            {/* Récap financier */}
-            {bookingMethod === "direct" &&
-              range?.from &&
-              range?.to &&
-              totalNights > 0 && (
-                <div className="p-6 border border-white bg-neutral-900/90 shadow-xl space-y-4 animate-scale-up">
-                  <div className="text-[10px] tracking-[0.25em] uppercase text-amber-400 font-bold border-b border-neutral-800 pb-2">
-                    {lang === "fr"
-                      ? "Détail de votre tarification"
-                      : "Your pricing breakdown"}
+            {/* ── Récap financier avec promo ── */}
+            {bookingMethod === "direct" && range?.from && range?.to && totalNights > 0 && (
+              <div className="p-6 border border-white bg-neutral-900/90 shadow-xl space-y-4 animate-scale-up">
+                <div className="text-[10px] tracking-[0.25em] uppercase text-amber-400 font-bold border-b border-neutral-800 pb-2">
+                  {lang === "fr" ? "Détail de votre tarification" : "Your pricing breakdown"}
+                </div>
+
+                {/* Détail nuits */}
+                <div className="max-h-44 overflow-y-auto space-y-2 pr-1 text-xs text-neutral-400">
+                  {priceBreakdowns.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center">
+                      <span>
+                        {lang === "fr" ? "Nuit du " : "Night of "}
+                        {format(item.date, "dd MMM yyyy", {
+                          locale: lang === "fr" ? fr : enUS,
+                        })}
+                      </span>
+                      <span className="font-mono text-white">{item.price} DT</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sous-total */}
+                <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
+                  <span className="text-xs text-neutral-400">
+                    {lang === "fr" ? "Sous-total" : "Subtotal"} ({totalNights}{" "}
+                    {totalNights > 1
+                      ? lang === "fr" ? "nuits" : "nights"
+                      : lang === "fr" ? "nuit" : "night"}) :
+                  </span>
+                  <span
+                    className={`text-lg font-mono font-bold transition-all ${
+                      promoResult ? "text-neutral-500 line-through" : "text-white"
+                    }`}
+                  >
+                    {totalPrice} DT
+                  </span>
+                </div>
+
+                {/* Ligne réduction */}
+                {promoResult && (
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-emerald-400 flex items-center gap-1.5">
+                      <Tag className="h-3 w-3 shrink-0" />
+                      {promoResult.code} (−{promoResult.pct}%)
+                    </span>
+                    <span className="text-lg font-mono font-bold text-emerald-400">
+                      −{discountAmount} DT
+                    </span>
                   </div>
-                  <div className="max-h-44 overflow-y-auto space-y-2 pr-1 text-xs text-neutral-400">
-                    {priceBreakdowns.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center"
-                      >
-                        <span>
-                          {lang === "fr" ? "Nuit du " : "Night of "}
-                          {format(item.date, "dd MMM yyyy", {
-                            locale: lang === "fr" ? fr : enUS,
-                          })}
-                        </span>
-                        <span className="font-mono text-white">
-                          {item.price} DT
-                        </span>
-                      </div>
-                    ))}
+                )}
+
+                {/* Total final avec promo */}
+                {promoResult ? (
+                  <div className="bg-emerald-950/25 border border-emerald-800/30 px-4 py-3 flex justify-between items-baseline -mx-1">
+                    <span className="text-xs text-white font-bold uppercase tracking-wider">
+                      {lang === "fr" ? "Total après réduction" : "Total after discount"}
+                    </span>
+                    <span className="text-2xl font-display font-bold text-emerald-400 font-mono">
+                      {finalPrice} DT
+                    </span>
                   </div>
+                ) : (
+                  /* Total sans promo */
                   <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
                     <span className="text-xs text-neutral-300">
                       Total ({totalNights}{" "}
                       {totalNights > 1
-                        ? lang === "fr"
-                          ? "nuits"
-                          : "nights"
-                        : lang === "fr"
-                        ? "nuit"
-                        : "night"}
-                      ) :
+                        ? lang === "fr" ? "nuits" : "nights"
+                        : lang === "fr" ? "nuit" : "night"}) :
                     </span>
                     <span className="text-2xl font-display font-bold text-white font-mono">
                       {totalPrice} DT
                     </span>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
             {/* Infos contact */}
             <div className="p-6 border border-neutral-800 space-y-6 bg-neutral-900/40 backdrop-blur-sm">

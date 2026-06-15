@@ -4,6 +4,8 @@ import { EmailService } from '../services/emailService';
 import { Op, fn, col, Sequelize } from 'sequelize';
 import { CustomPrice } from '../models/CustomPrice';
 import { notifier } from '../services/sseService';
+import { Setting } from '../models/Setting';
+import { Notification } from '../models/Notification';
 // import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
 
 export class ReservationController {
@@ -32,8 +34,10 @@ export class ReservationController {
       firstName, lastName, email, phone,
       numberOfGuests, checkInDate, checkOutDate,
       specialRequests, depositAmount,
+      originalPrice, promoCode, promoDiscount,  // ← champs promo
     } = req.body;
- 
+
+    // ── Vérification conflit de dates ──
     const conflict = await ReservationModel.findOne({
       where: {
         status: { [Op.in]: ['confirmed', 'pending'] },
@@ -49,51 +53,77 @@ export class ReservationController {
         error: 'Ces dates sont déjà réservées ou en attente.',
       });
     }
- 
+
+    // ── Validation nuits ──
     const nights = this.calculateNights(checkInDate, checkOutDate);
     if (nights <= 0) {
       return res.status(400).json({ success: false, error: 'Dates invalides.' });
     }
- 
-    const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+
+    // ── Prix : si promo appliquée côté client, on utilise req.body.totalPrice
+    //          sinon on recalcule en base ──
+    const computedPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+    const finalPrice = (promoCode && req.body.totalPrice)
+      ? parseFloat(req.body.totalPrice)
+      : computedPrice;
+
     const deposit = depositAmount != null
       ? parseFloat(depositAmount)
-      : Math.round(totalPrice * 0.3 * 100) / 100;
- 
+      : Math.round(finalPrice * 0.3 * 100) / 100;
+
     const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
- 
+
+    // ── Créer la réservation ──
     const reservation = await ReservationModel.create({
       refNumber,
       firstName, lastName, email, phone,
       numberOfGuests: parseInt(numberOfGuests) || 2,
       checkInDate, checkOutDate,
-      totalPrice,
+      totalPrice:    finalPrice,
+      originalPrice: originalPrice  || null,
+      promoCode:     promoCode      || null,
+      promoDiscount: promoDiscount  || null,
       specialRequests,
-      source: 'direct',
-      status: 'pending',
+      source:        'direct',
+      status:        'pending',
       depositAmount: deposit,
-      depositPaid: false,
+      depositPaid:   false,
       depositPaidAt: null,
-      depositNotes: null,
-      inspection: null,
+      depositNotes:  null,
+      inspection:    null,
     });
- 
+
+    // ── Réponse immédiate au client ──
     res.status(201).json({ success: true, data: reservation });
+
+    // ── Sauvegarder la notification en base ──
+    try {
+      await Notification.create({
+        guestName: `${reservation.firstName} ${reservation.lastName}`,
+        checkIn:   reservation.checkInDate,
+        checkOut:  reservation.checkOutDate,
+        guests:    reservation.numberOfGuests,
+        status:    'En attente',
+        read:      false,
+      });
+    } catch (notifErr: any) {
+      console.error('[Notification] Erreur sauvegarde:', notifErr.message);
+    }
+
+    // ── Émettre l'événement SSE ──
     notifier.emit('new-reservation', {
-  id:        reservation.id,
-  guestName: `${reservation.firstName} ${reservation.lastName}`,
-  checkIn:   reservation.checkInDate,
-  checkOut:  reservation.checkOutDate,
-  guests:    reservation.numberOfGuests,
-  status:    'En attente',
-});
- 
+      id:        reservation.id,
+      guestName: `${reservation.firstName} ${reservation.lastName}`,
+      checkIn:   reservation.checkInDate,
+      checkOut:  reservation.checkOutDate,
+      guests:    reservation.numberOfGuests,
+      status:    'En attente',
+    });
+
+    // ── Email de confirmation (non bloquant) ──
     this.emailService.sendConfirmationEmail(reservation)
-      .catch((e: any) => console.error('[Email] non envoyé :', e.message));
- 
-    // notifyNewReservation(reservation)
-    //   .catch((e: any) => console.error('[WA] createReservation :', e.message));
- 
+      .catch((e: any) => console.error('[Email] non envoyé:', e.message));
+
   } catch (error: any) {
     console.error('Erreur createReservation:', error);
     return res.status(500).json({ success: false, error: error.message });
@@ -424,7 +454,8 @@ export class ReservationController {
   private async calculateTotalPrice(checkIn: string | Date, checkOut: string | Date): Promise<number> {
     const start     = new Date(checkIn);
     const end       = new Date(checkOut);
-    const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+    const settingRow = await Setting.findOne({ where: { key_name: 'base_price' } });
+const basePrice  = settingRow ? parseFloat(settingRow.value) : 1500;
 
     const checkInStr  = start.toISOString().split('T')[0];
     const checkOutStr = end.toISOString().split('T')[0];

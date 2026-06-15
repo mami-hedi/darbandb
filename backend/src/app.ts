@@ -20,6 +20,7 @@ import { initContactModel } from './models/Contact';   // ← ajouter
 import { initSettingModel } from './models/Setting'; // ✅ AJOUTER
 import { initPromoCodeModel } from './models/PromoCode';
 import { initSubscriberModel } from './models/Subscriber';
+import { initNotificationModel } from './models/Notification';
 
 
 import contactRoutes from './routes/contactRoutes';     // ← ajouter
@@ -34,6 +35,7 @@ import sseRoutes from './routes/sseRoutes';
 import promosRouter from './routes/promos';
 
 import subscribersRouter from './routes/subscribers';
+import notificationsRouter from './routes/notifications';
 
 
 
@@ -80,6 +82,7 @@ initContactModel(sequelize);
 initSettingModel(sequelize);
 initPromoCodeModel(sequelize); 
 initSubscriberModel(sequelize);
+initNotificationModel(sequelize);
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -92,6 +95,7 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/sse', sseRoutes);
 app.use('/api/promos', promosRouter);
 app.use('/api/subscribers', subscribersRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Seed Admin (Sécurisé par variable d'environnement)
 const seedAdmin = async () => {
