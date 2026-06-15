@@ -49,7 +49,21 @@ export const initNotificationModel = (sequelize: Sequelize) => {
         allowNull: false,
         defaultValue: false,
       },
+      // ✅ INSIDE the attributes object
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+        field: 'created_at',
+      },
+      updatedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+        field: 'updated_at',
+      },
     },
+    // ✅ Second argument: options object
     {
       sequelize,
       tableName: 'notifications',

@@ -1165,7 +1165,7 @@ function Booking() {
               <ul className="space-y-3 text-xs border-t border-neutral-800 pt-4">
                 <li className="flex items-center gap-3 text-neutral-300">
                   <MapPin className="h-3.5 w-3.5 text-neutral-500" />
-                  Avenue de la Plage, Hammamet
+                  Hammamet, Tunisie
                 </li>
                 <li className="flex items-center gap-3 text-neutral-300">
                   <Phone className="h-3.5 w-3.5 text-neutral-500" />

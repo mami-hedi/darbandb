@@ -84,7 +84,7 @@ function Shell() {
   const { logout }       = useAdminAuth();
   const navigate         = useNavigate();
   const { pathname }     = useLocation();
-  const { notifications, unreadCount, markAllRead } = useReservationNotifications();
+  const { notifications, unreadCount, markAllRead, markOneRead, deleteOne, clearAll } = useReservationNotifications();
 
   const [showNotif,     setShowNotif]     = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -93,153 +93,152 @@ function Shell() {
   const isLoginPage = pathname === "/admin/login";
   const handleLogout = () => { logout(); navigate({ to: "/" }); setIsMenuOpen(false); };
 
-  return (
-    <div className={cn(
-      "min-h-screen bg-secondary/30 flex",
-      isLoginPage ? "items-center justify-center" : "flex-col md:flex-row"
-    )}>
-      <Toaster position="top-right" richColors closeButton />
+  if (isLoginPage) {
+    return (
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <Toaster position="top-right" richColors closeButton />
+        <Outlet />
+      </div>
+    );
+  }
 
+  return (
+    <div className="min-h-screen bg-secondary/30 flex flex-col">
+      <Toaster position="top-right" richColors closeButton />
       {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
 
-      {!isLoginPage && (
-        <>
-          {/* ── Header mobile — fond noir, notification à droite ── */}
-          <div className="md:hidden flex items-center justify-between bg-neutral-950 text-white px-4 h-14 z-30 border-b border-neutral-800">
-            {/* Gauche : burger */}
-            <button
-              onClick={() => setIsMenuOpen(true)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+      {/* ── Topbar noir — toute la largeur ── */}
+      <header className="w-full bg-neutral-950 text-white h-14 flex items-center justify-between px-4 md:px-6 border-b border-neutral-800 z-30 shrink-0">
+
+        {/* Gauche : burger (mobile) + logo */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="font-display text-lg tracking-widest">B&B Admin</span>
+        </div>
+
+        {/* Droite : notifications */}
+        <div className="flex items-center gap-2">
+          <NotificationPanel
+            notifications={notifications}
+            unreadCount={unreadCount}
+            markAllRead={markAllRead}
+            markOneRead={markOneRead}
+            deleteOne={deleteOne}
+            clearAll={clearAll}
+            open={showNotif}
+            onToggle={() => setShowNotif(v => !v)}
+            onClose={() => setShowNotif(false)}
+          />
+        </div>
+      </header>
+
+      {/* ── Corps : sidebar + contenu ── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ── Sidebar desktop ── */}
+        <aside className="hidden md:flex w-64 flex-col bg-neutral-950 text-white shrink-0 border-r border-neutral-800">
+
+          {/* Nav */}
+          <nav className="flex-1 p-4 space-y-0.5 pt-5">
+            {nav.map(n => (
+              <Link
+                key={n.to}
+                to={n.to}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-colors",
+                  pathname === n.to
+                    ? "bg-white/10 text-white font-medium"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <n.icon size={16} /> {n.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Footer sidebar */}
+          <div className="p-4 border-t border-white/10 space-y-1">
+            
+            <a  href="/"
+              className="block text-center text-xs text-white/30 hover:text-white/60 underline underline-offset-4 transition-colors py-2"
             >
-              <Menu className="h-5 w-5" />
+              Aller vers le site web
+            </a>
+            <button
+              onClick={() => setShowChangePwd(true)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <KeyRound size={16} /> Mot de passe
             </button>
-
-            {/* Centre : logo */}
-            <span className="font-display text-lg tracking-widest">B&B Admin</span>
-
-            {/* Droite : notification */}
-            <NotificationPanel
-              notifications={notifications}
-              unreadCount={unreadCount}
-              markAllRead={markAllRead}
-              open={showNotif}
-              onToggle={() => setShowNotif(v => !v)}
-              onClose={() => setShowNotif(false)}
-            />
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+            >
+              <LogOut size={16} /> Déconnexion
+            </button>
           </div>
+        </aside>
 
-          {/* ── Menu mobile overlay ── */}
-          {isMenuOpen && (
-            <div className="md:hidden fixed inset-0 z-[400] bg-neutral-950 text-white p-6 flex flex-col">
-              <div className="flex justify-between items-center mb-10">
-                <span className="font-display text-xl tracking-widest">Menu</span>
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <nav className="flex-1 space-y-1">
-                {nav.map(n => (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-4 px-4 py-3 rounded-lg text-base transition-colors",
-                      pathname === n.to
-                        ? "bg-white/10 text-white"
-                        : "text-white/70 hover:text-white hover:bg-white/5"
-                    )}
-                  >
-                    <n.icon size={18} /> {n.label}
-                  </Link>
-                ))}
-              </nav>
-              <div className="border-t border-white/10 pt-6 space-y-2">
-                <a href="/" className="block text-center text-xs text-white/40 hover:text-white/70 underline underline-offset-4 transition-colors pb-2">
-                  Aller vers le site web
-                </a>
-                <button
-                  onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  <KeyRound size={16} /> Mot de passe
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
-                >
-                  <LogOut size={16} /> Déconnexion
-                </button>
-              </div>
+        {/* ── Menu mobile overlay ── */}
+        {isMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-[400] bg-neutral-950 text-white p-6 flex flex-col">
+            <div className="flex justify-between items-center mb-10">
+              <span className="font-display text-xl tracking-widest">Menu</span>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
             </div>
-          )}
-
-          {/* ── Sidebar desktop — notification en haut à droite du header ── */}
-          <aside className="hidden md:flex w-64 flex-col bg-neutral-950 text-white min-h-screen shrink-0 border-r border-neutral-800">
-
-            {/* Brand + notification côte à côte */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-              <div>
-                <div className="font-display text-2xl tracking-wider">B&B</div>
-                <div className="text-[0.6rem] tracking-[0.3em] uppercase text-white/40 mt-0.5">Espace Admin</div>
-              </div>
-              {/* Notification — alignée à droite dans le header du sidebar */}
-              <NotificationPanel
-                notifications={notifications}
-                unreadCount={unreadCount}
-                markAllRead={markAllRead}
-                open={showNotif}
-                onToggle={() => setShowNotif(v => !v)}
-                onClose={() => setShowNotif(false)}
-              />
-            </div>
-
-            {/* Nav */}
-            <nav className="flex-1 p-4 space-y-0.5">
+            <nav className="flex-1 space-y-1">
               {nav.map(n => (
                 <Link
                   key={n.to}
                   to={n.to}
+                  onClick={() => setIsMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-colors",
+                    "flex items-center gap-4 px-4 py-3 rounded-lg text-base transition-colors",
                     pathname === n.to
-                      ? "bg-white/10 text-white font-medium"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
+                      ? "bg-white/10 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
-                  <n.icon size={16} /> {n.label}
+                  <n.icon size={18} /> {n.label}
                 </Link>
               ))}
             </nav>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-white/10 space-y-1">
-              <a href="/" className="block text-center text-xs text-white/30 hover:text-white/60 underline underline-offset-4 transition-colors py-2">
+            <div className="border-t border-white/10 pt-6 space-y-2">
+              <a href="/" className="block text-center text-xs text-white/40 hover:text-white/70 underline underline-offset-4 transition-colors pb-2">
                 Aller vers le site web
               </a>
               <button
-                onClick={() => setShowChangePwd(true)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                onClick={() => { setShowChangePwd(true); setIsMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
                 <KeyRound size={16} /> Mot de passe
               </button>
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
               >
                 <LogOut size={16} /> Déconnexion
               </button>
             </div>
-          </aside>
-        </>
-      )}
+          </div>
+        )}
 
-      <main className="flex-1 overflow-auto p-4 md:p-10">
-        <Outlet />
-      </main>
+        {/* ── Contenu principal ── */}
+        <main className="flex-1 overflow-auto p-4 md:p-10">
+          <Outlet />
+        </main>
+
+      </div>
     </div>
   );
 }

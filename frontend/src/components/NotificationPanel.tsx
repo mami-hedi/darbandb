@@ -65,6 +65,13 @@ export function NotificationPanel({
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
+  // ── Handler "Tout lu" : appelle markAllRead sans fermer le panneau ──
+  const handleMarkAllRead = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    markAllRead();
+  };
+
   return (
     <div ref={panelRef} className="relative">
 
@@ -135,7 +142,8 @@ export function NotificationPanel({
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => markAllRead()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={handleMarkAllRead}
                   title="Tout marquer comme lu"
                   className="
                     flex items-center gap-1
@@ -155,7 +163,12 @@ export function NotificationPanel({
               {clearAll && notifications.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => clearAll()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearAll();
+                  }}
                   title="Vider l'historique"
                   className="
                     p-1.5 rounded-lg
@@ -313,8 +326,8 @@ export function NotificationPanel({
               <span className="text-[11px] text-neutral-600">
                 {notifications.length} notification{notifications.length > 1 ? "s" : ""}
               </span>
-              <a
-                href="/admin/reservations"
+              
+               <a href="/admin/reservations"
                 onMouseDown={(e) => e.stopPropagation()}
                 className="
                   text-xs text-neutral-500
