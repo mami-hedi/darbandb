@@ -29,6 +29,7 @@ import { Route as AdminTarifsRouteImport } from './routes/admin.tarifs'
 import { Route as AdminReservationsRouteImport } from './routes/admin.reservations'
 import { Route as AdminPromotionsRouteImport } from './routes/admin.promotions'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminContactsRouteImport } from './routes/admin.contacts'
 import { Route as AdminClientsRouteImport } from './routes/admin.clients'
 import { Route as AdminCheckHouseRouteImport } from './routes/admin.check-house'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
@@ -134,6 +135,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminContactsRoute = AdminContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminClientsRoute = AdminClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/contacts': typeof AdminContactsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/promotions': typeof AdminPromotionsRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/contacts': typeof AdminContactsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/promotions': typeof AdminPromotionsRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/check-house': typeof AdminCheckHouseRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/contacts': typeof AdminContactsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/promotions': typeof AdminPromotionsRoute
   '/admin/reservations': typeof AdminReservationsRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/check-house'
     | '/admin/clients'
+    | '/admin/contacts'
     | '/admin/login'
     | '/admin/promotions'
     | '/admin/reservations'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/check-house'
     | '/admin/clients'
+    | '/admin/contacts'
     | '/admin/login'
     | '/admin/promotions'
     | '/admin/reservations'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/check-house'
     | '/admin/clients'
+    | '/admin/contacts'
     | '/admin/login'
     | '/admin/promotions'
     | '/admin/reservations'
@@ -473,6 +485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/contacts': {
+      id: '/admin/contacts'
+      path: '/contacts'
+      fullPath: '/admin/contacts'
+      preLoaderRoute: typeof AdminContactsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/clients': {
       id: '/admin/clients'
       path: '/clients'
@@ -509,6 +528,7 @@ interface AdminRouteChildren {
   AdminBlogRoute: typeof AdminBlogRoute
   AdminCheckHouseRoute: typeof AdminCheckHouseRoute
   AdminClientsRoute: typeof AdminClientsRoute
+  AdminContactsRoute: typeof AdminContactsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPromotionsRoute: typeof AdminPromotionsRoute
   AdminReservationsRoute: typeof AdminReservationsRoute
@@ -521,6 +541,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBlogRoute: AdminBlogRoute,
   AdminCheckHouseRoute: AdminCheckHouseRoute,
   AdminClientsRoute: AdminClientsRoute,
+  AdminContactsRoute: AdminContactsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPromotionsRoute: AdminPromotionsRoute,
   AdminReservationsRoute: AdminReservationsRoute,

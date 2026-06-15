@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { 
   LayoutDashboard, CalendarRange, Users, FileText, CalendarCheck, 
-  Coins, LogOut, ShieldCheck, KeyRound, X, Tag, Menu
+  Coins, LogOut, ShieldCheck, KeyRound, X, Tag, Menu, Mail
 } from "lucide-react";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const nav: NavItem[] = [
   { to: "/admin",              label: "Dashboard",      icon: LayoutDashboard, exact: true },
   { to: "/admin/reservations", label: "Réservations",   icon: CalendarRange },
   { to: "/admin/clients",      label: "Clients",        icon: Users },
+  { to: "/admin/contacts",     label: "Messages",       icon: Mail },          // ← AJOUT
   { to: "/admin/tarifs",       label: "Tarifs",         icon: Coins },
   { to: "/admin/check-house",  label: "Vérifier État",  icon: ShieldCheck },
   { to: "/admin/blog",         label: "Blog",           icon: FileText },

@@ -70,6 +70,28 @@ router.post('/', validate, async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/contacts — liste tous les messages
+router.get('/', async (_req, res) => {
+  try {
+    const contacts = await Contact.findAll({
+      order: [['createdAt', 'DESC']],
+    });
+    return res.json({ data: contacts });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// DELETE /api/contacts/:id — supprime un message
+router.delete('/:id', async (req, res) => {
+  try {
+    await Contact.destroy({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erreur suppression.' });
+  }
+});
+
 export default router;
 
 // ── Templates HTML inline ─────────────────────────────────────────
