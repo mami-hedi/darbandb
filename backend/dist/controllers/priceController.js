@@ -1,8 +1,4 @@
 "use strict";
-// ============================================
-// Contrôleur de prix Express corrigé
-// Fichier : priceController.ts
-// ============================================
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -39,17 +35,20 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PriceController = void 0;
 const CustomPrice_1 = require("../models/CustomPrice");
+const Setting_1 = require("../models/Setting");
+async function fetchBasePrice() {
+    const row = await Setting_1.Setting.findOne({ where: { key_name: 'base_price' } });
+    return row ? parseFloat(row.value) : 1550;
+}
 class PriceController {
     constructor() {
         this.getAllPrices = this.getAllPrices.bind(this);
         this.updateCustomPrice = this.updateCustomPrice.bind(this);
         this.deleteCustomPrice = this.deleteCustomPrice.bind(this);
         this.getPricesByRange = this.getPricesByRange.bind(this);
-        // AJOUTS ICI
         this.getBasePrice = this.getBasePrice.bind(this);
         this.updateBasePrice = this.updateBasePrice.bind(this);
     }
-    // --- Vos méthodes existantes ---
     async getAllPrices(req, res) {
         try {
             const prices = await CustomPrice_1.CustomPrice.findAll();
@@ -60,7 +59,7 @@ class PriceController {
                     customPrices[dateKey] = parseFloat(String(row.price));
                 }
             });
-            const BASE_PRICE = parseFloat(process.env.BASE_PRICE || '150');
+            const BASE_PRICE = await fetchBasePrice();
             return res.status(200).json({ success: true, basePrice: BASE_PRICE, customPrices });
         }
         catch (error) {
@@ -82,7 +81,8 @@ class PriceController {
                 if (dateKey)
                     customPrices[dateKey] = parseFloat(String(row.price));
             });
-            return res.status(200).json({ success: true, basePrice: parseFloat(process.env.BASE_PRICE || '150'), customPrices });
+            const BASE_PRICE = await fetchBasePrice();
+            return res.status(200).json({ success: true, basePrice: BASE_PRICE, customPrices });
         }
         catch (error) {
             return res.status(500).json({ success: false, error: error.message });
@@ -112,10 +112,9 @@ class PriceController {
             return res.status(500).json({ success: false, error: error.message });
         }
     }
-    // --- NOUVELLES MÉTHODES INTÉGRÉES DANS LA CLASSE ---
     async getBasePrice(req, res) {
         try {
-            const basePrice = parseFloat(process.env.BASE_PRICE || '150');
+            const basePrice = await fetchBasePrice();
             return res.status(200).json({ success: true, basePrice });
         }
         catch (error) {
@@ -127,12 +126,12 @@ class PriceController {
             const { price } = req.body;
             if (!price || isNaN(Number(price)) || Number(price) <= 0)
                 return res.status(400).json({ success: false, error: 'Prix invalide' });
-            process.env.BASE_PRICE = price.toString();
+            await Setting_1.Setting.upsert({ key_name: 'base_price', value: price.toString() });
             return res.status(200).json({ success: true, message: `Prix mis à jour à ${price} DT` });
         }
         catch (error) {
             return res.status(500).json({ success: false, error: error.message });
         }
     }
-} // <--- CETTE ACCOLADE FERME BIEN LA CLASSE
+}
 exports.PriceController = PriceController;

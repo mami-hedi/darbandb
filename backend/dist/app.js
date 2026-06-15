@@ -18,13 +18,22 @@ const Admin_1 = require("./models/Admin");
 const CustomPrice_1 = require("./models/CustomPrice");
 const RateRule_1 = require("./models/RateRule");
 const ManualBlock_1 = require("./models/ManualBlock");
-require("./services/whatsappService");
+const Contact_1 = require("./models/Contact"); // ← ajouter
+const Setting_1 = require("./models/Setting"); // ✅ AJOUTER
+const PromoCode_1 = require("./models/PromoCode");
+const Subscriber_1 = require("./models/Subscriber");
+const Notification_1 = require("./models/Notification");
+const contactRoutes_1 = __importDefault(require("./routes/contactRoutes")); // ← ajouter
 const Availability_1 = __importDefault(require("./routes/Availability"));
 const reservations_1 = __importDefault(require("./routes/reservations"));
 const blogRoutes_1 = __importDefault(require("./routes/blogRoutes"));
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const priceRoutes_1 = __importDefault(require("./routes/priceRoutes"));
 const rateRules_1 = __importDefault(require("./routes/rateRules"));
+const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
+const promos_1 = __importDefault(require("./routes/promos"));
+const subscribers_1 = __importDefault(require("./routes/subscribers"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
 const app = (0, express_1.default)();
 app.set('trust proxy', 1); // ← fix Render proxy
 // Middlewares de sécurité et parsing
@@ -59,6 +68,11 @@ app.use('/assets', express_1.default.static(path_1.default.join(__dirname, 'asse
 (0, CustomPrice_1.initCustomPriceModel)(database_1.sequelize);
 (0, RateRule_1.initRateRuleModel)(database_1.sequelize);
 (0, ManualBlock_1.initManualBlockModel)(database_1.sequelize);
+(0, Contact_1.initContactModel)(database_1.sequelize);
+(0, Setting_1.initSettingModel)(database_1.sequelize);
+(0, PromoCode_1.initPromoCodeModel)(database_1.sequelize);
+(0, Subscriber_1.initSubscriberModel)(database_1.sequelize);
+(0, Notification_1.initNotificationModel)(database_1.sequelize);
 // Routes API
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/availability', Availability_1.default);
@@ -66,6 +80,11 @@ app.use('/api/reservations', reservations_1.default);
 app.use('/api/blog', blogRoutes_1.default);
 app.use('/api/settings', priceRoutes_1.default);
 app.use('/api/rates', rateRules_1.default);
+app.use('/api/contacts', contactRoutes_1.default);
+app.use('/api/sse', sseRoutes_1.default);
+app.use('/api/promos', promos_1.default);
+app.use('/api/subscribers', subscribers_1.default);
+app.use('/api/notifications', notifications_1.default);
 // Seed Admin (Sécurisé par variable d'environnement)
 const seedAdmin = async () => {
     const adminCount = await Admin_1.Admin.count();

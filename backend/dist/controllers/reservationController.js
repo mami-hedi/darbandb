@@ -5,7 +5,10 @@ const Reservation_1 = require("../models/Reservation");
 const emailService_1 = require("../services/emailService");
 const sequelize_1 = require("sequelize");
 const CustomPrice_1 = require("../models/CustomPrice");
-const whatsappService_1 = require("../services/whatsappService");
+const sseService_1 = require("../services/sseService");
+const Setting_1 = require("../models/Setting");
+const Notification_1 = require("../models/Notification");
+// import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
 class ReservationController {
     constructor() {
         this.emailService = new emailService_1.EmailService();
@@ -18,14 +21,16 @@ class ReservationController {
         this.getClients = this.getClients.bind(this);
         this.getDashboardStats = this.getDashboardStats.bind(this);
         this.getPricePreview = this.getPricePreview.bind(this);
-        this.saveInspection = this.saveInspection.bind(this); // NEW
+        this.saveInspection = this.saveInspection.bind(this);
     }
     // ─────────────────────────────────────────────────────────────
     // POST /reservations  — créer une réservation
     // ─────────────────────────────────────────────────────────────
     async createReservation(req, res) {
         try {
-            const { firstName, lastName, email, phone, numberOfGuests, checkInDate, checkOutDate, specialRequests, depositAmount, } = req.body;
+            const { firstName, lastName, email, phone, numberOfGuests, checkInDate, checkOutDate, specialRequests, depositAmount, originalPrice, promoCode, promoDiscount, // ← champs promo
+             } = req.body;
+            // ── Vérification conflit de dates ──
             const conflict = await Reservation_1.Reservation.findOne({
                 where: {
                     status: { [sequelize_1.Op.in]: ['confirmed', 'pending'] },
@@ -41,21 +46,31 @@ class ReservationController {
                     error: 'Ces dates sont déjà réservées ou en attente.',
                 });
             }
+            // ── Validation nuits ──
             const nights = this.calculateNights(checkInDate, checkOutDate);
             if (nights <= 0) {
                 return res.status(400).json({ success: false, error: 'Dates invalides.' });
             }
-            const totalPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+            // ── Prix : si promo appliquée côté client, on utilise req.body.totalPrice
+            //          sinon on recalcule en base ──
+            const computedPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+            const finalPrice = (promoCode && req.body.totalPrice)
+                ? parseFloat(req.body.totalPrice)
+                : computedPrice;
             const deposit = depositAmount != null
                 ? parseFloat(depositAmount)
-                : Math.round(totalPrice * 0.3 * 100) / 100;
+                : Math.round(finalPrice * 0.3 * 100) / 100;
             const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+            // ── Créer la réservation ──
             const reservation = await Reservation_1.Reservation.create({
                 refNumber,
                 firstName, lastName, email, phone,
                 numberOfGuests: parseInt(numberOfGuests) || 2,
                 checkInDate, checkOutDate,
-                totalPrice,
+                totalPrice: finalPrice,
+                originalPrice: originalPrice || null,
+                promoCode: promoCode || null,
+                promoDiscount: promoDiscount || null,
                 specialRequests,
                 source: 'direct',
                 status: 'pending',
@@ -65,13 +80,34 @@ class ReservationController {
                 depositNotes: null,
                 inspection: null,
             });
-            // ✅ Réponse immédiate — les notifications partent après
+            // ── Réponse immédiate au client ──
             res.status(201).json({ success: true, data: reservation });
-            // 🔔 Notifications fire & forget (ne bloquent pas la réponse)
+            // ── Sauvegarder la notification en base ──
+            try {
+                await Notification_1.Notification.create({
+                    guestName: `${reservation.firstName} ${reservation.lastName}`,
+                    checkIn: reservation.checkInDate,
+                    checkOut: reservation.checkOutDate,
+                    guests: reservation.numberOfGuests,
+                    status: 'En attente',
+                    read: false,
+                });
+            }
+            catch (notifErr) {
+                console.error('[Notification] Erreur sauvegarde:', notifErr.message);
+            }
+            // ── Émettre l'événement SSE ──
+            sseService_1.notifier.emit('new-reservation', {
+                id: reservation.id,
+                guestName: `${reservation.firstName} ${reservation.lastName}`,
+                checkIn: reservation.checkInDate,
+                checkOut: reservation.checkOutDate,
+                guests: reservation.numberOfGuests,
+                status: 'En attente',
+            });
+            // ── Email de confirmation (non bloquant) ──
             this.emailService.sendConfirmationEmail(reservation)
-                .catch((e) => console.error('[Email] non envoyé :', e.message));
-            (0, whatsappService_1.notifyNewReservation)(reservation) // ← WhatsApp NEW
-                .catch((e) => console.error('[WA] createReservation :', e.message));
+                .catch((e) => console.error('[Email] non envoyé:', e.message));
         }
         catch (error) {
             console.error('Erreur createReservation:', error);
@@ -168,12 +204,11 @@ class ReservationController {
                 }
             }
             await reservation.update(updateData);
-            // 🔔 Annulation → notifier email + WhatsApp
             if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
                 this.emailService.sendCancellationEmail(reservation)
                     .catch((e) => console.error('[Email] annulation :', e.message));
-                (0, whatsappService_1.notifyCancellation)(reservation) // ← WhatsApp NEW
-                    .catch((e) => console.error('[WA] annulation :', e.message));
+                // notifyCancellation(reservation)
+                //   .catch((e: any) => console.error('[WA] annulation :', e.message));
             }
             return res.json({ success: true, data: reservation });
         }
@@ -230,7 +265,7 @@ class ReservationController {
         }
     }
     // ─────────────────────────────────────────────────────────────
-    // PATCH /reservations/:id/inspection  — NEW
+    // PATCH /reservations/:id/inspection
     // Body : { inspection: Record<string, { status, note }> }
     // ─────────────────────────────────────────────────────────────
     async saveInspection(req, res) {
@@ -377,7 +412,8 @@ class ReservationController {
     async calculateTotalPrice(checkIn, checkOut) {
         const start = new Date(checkIn);
         const end = new Date(checkOut);
-        const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+        const settingRow = await Setting_1.Setting.findOne({ where: { key_name: 'base_price' } });
+        const basePrice = settingRow ? parseFloat(settingRow.value) : 1500;
         const checkInStr = start.toISOString().split('T')[0];
         const checkOutStr = end.toISOString().split('T')[0];
         const customPrices = await CustomPrice_1.CustomPrice.findAll({
