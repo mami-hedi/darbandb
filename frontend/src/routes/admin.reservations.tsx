@@ -29,12 +29,9 @@ export const Route = createFileRoute("/admin/reservations")({
   component: ReservationsPage,
 });
 
-// ─── TYPES TRI ────────────────────────────────────────────────
-
 type SortField = "checkInDate" | "checkOutDate" | "lastName" | "totalPrice" | "createdAt";
 type SortDir   = "asc" | "desc";
 
-// ─── HELPER : forcer number depuis string ou DECIMAL SQL ──────
 const toNum = (v: any): number => {
   if (v === null || v === undefined || v === "") return 0;
   const n = parseFloat(String(v));
@@ -42,8 +39,6 @@ const toNum = (v: any): number => {
 };
 
 const fmtPrice = (v: any): string => toNum(v).toFixed(2);
-
-// ─── PAGE PRINCIPALE ──────────────────────────────────────────
 
 function ReservationsPage() {
   const [data, setData]           = useState<Reservation[]>([]);
@@ -64,7 +59,6 @@ function ReservationsPage() {
       const res = await fetch(`${API_BASE}/reservations`);
       const result = await res.json();
       if (result.success) {
-        // ✅ Normalise totalPrice et depositAmount depuis la DB (DECIMAL arrive en string)
         const normalized = result.data.map((r: any) => ({
           ...r,
           totalPrice:    toNum(r.totalPrice),
@@ -441,8 +435,6 @@ function ReservationsPage() {
   );
 }
 
-// ─── ICÔNE TRI ────────────────────────────────────────────────
-
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   return (
     <span className={cn("text-[10px] leading-none transition-opacity", active ? "opacity-100" : "opacity-30 group-hover:opacity-60")}>
@@ -450,8 +442,6 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
     </span>
   );
 }
-
-// ─── PAGINATION ───────────────────────────────────────────────
 
 function Pagination({ currentPage, totalPages, totalItems, pageSize, onPageChange }: {
   currentPage: number;
@@ -524,8 +514,6 @@ function Pagination({ currentPage, totalPages, totalItems, pageSize, onPageChang
   );
 }
 
-// ─── HIGHLIGHT TEXTE ──────────────────────────────────────────
-
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -540,8 +528,6 @@ function Highlight({ text, query }: { text: string; query: string }) {
     </>
   );
 }
-
-// ─── MODAL CRÉATION / MODIFICATION ───────────────────────────
 
 type PricePreview = {
   nights: number;
@@ -558,6 +544,13 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
 }) {
   const isEdit = reservation !== null;
 
+  // ✅ FIX : normaliser les dates avec .split("T")[0] dès l'initialisation
+  // pour que la comparaison dans useEffect soit identique au format form.checkInDate
+  const initialDates = useRef({
+    checkIn:  reservation?.checkInDate?.split("T")[0]  ?? "",
+    checkOut: reservation?.checkOutDate?.split("T")[0] ?? "",
+  });
+
   const [form, setForm] = useState({
     firstName:       isEdit ? reservation.firstName       : "",
     lastName:        isEdit ? reservation.lastName        : "",
@@ -568,7 +561,6 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
     numberOfGuests:  isEdit ? reservation.numberOfGuests  : 2,
     specialRequests: isEdit ? (reservation.specialRequests ?? "")    : "",
     status:          isEdit ? reservation.status          : "pending" as Reservation["status"],
-    // ✅ toNum() garantit un vrai number, jamais string ni NaN
     depositAmount:   isEdit ? fmtPrice(reservation.depositAmount) : "",
     depositPaid:     isEdit ? reservation.depositPaid     : false,
     depositNotes:    isEdit ? (reservation.depositNotes ?? "")        : "",
@@ -582,20 +574,37 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+
     const cin  = form.checkInDate;
     const cout = form.checkOutDate;
+
+    // Validation de base
     if (!cin || !cout || new Date(cout) <= new Date(cin)) {
-      setPricePreview(null); setLoadingPrice(false); return;
+      setPricePreview(null);
+      setLoadingPrice(false);
+      return;
     }
+
+    // ✅ FIX PRINCIPAL : comparaison correcte car les deux sont au format "YYYY-MM-DD"
+    const hasDatesChanged =
+      cin  !== initialDates.current.checkIn ||
+      cout !== initialDates.current.checkOut;
+
+    // En mode édition, si les dates n'ont pas changé → ne pas recalculer
+    if (isEdit && !hasDatesChanged) {
+      setLoadingPrice(false);
+      return;
+    }
+
     setLoadingPrice(true);
     debounceRef.current = setTimeout(async () => {
       try {
         const res  = await fetch(`${API_BASE}/reservations/price-preview?checkIn=${cin}&checkOut=${cout}`);
         const data = await res.json();
+
         if (data.success) {
           const p: PricePreview = {
             ...data.data,
-            // ✅ Normalise les prix du preview aussi
             total:            toNum(data.data.total),
             suggestedDeposit: toNum(data.data.suggestedDeposit),
             breakdown: (data.data.breakdown || []).map((b: any) => ({
@@ -603,18 +612,26 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               price: toNum(b.price),
             })),
           };
+
           setPricePreview(p);
+
+          // ✅ Mise à jour du formulaire avec le nouveau prix calculé
           setForm(f => ({
             ...f,
             totalPrice:    fmtPrice(p.total),
+            // Suggère l'acompte seulement si le champ est vide
             depositAmount: f.depositAmount || fmtPrice(p.suggestedDeposit),
           }));
         }
-      } catch { /* ignore */ }
-      finally { setLoadingPrice(false); }
+      } catch (err) {
+        console.error("Erreur calcul prix :", err);
+      } finally {
+        setLoadingPrice(false);
+      }
     }, 300);
+
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [form.checkInDate, form.checkOutDate]);
+  }, [form.checkInDate, form.checkOutDate, isEdit]);
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.checkInDate || !form.checkOutDate) {
@@ -715,7 +732,6 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                       </span>
                     )}
                   </div>
-                  {/* ✅ Affichage clair du total calculé sous le champ */}
                   {!loadingPrice && pricePreview && (
                     <p className="mt-1.5 text-xs font-semibold text-primary">
                       = {fmtPrice(pricePreview.total)} TND pour {pricePreview.nights} nuit{pricePreview.nights > 1 ? "s" : ""}
@@ -844,18 +860,15 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               </div>
             )}
 
-            {/* Preview chargé ✅ */}
+            {/* Preview chargé */}
             {!loadingPrice && pricePreview && (
               <div className="flex flex-col gap-4 flex-1 overflow-hidden">
-                {/* Total */}
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center shrink-0">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Total du séjour</p>
                   <p className="text-4xl font-bold text-primary tabular-nums">{fmtPrice(pricePreview.total)}</p>
                   <p className="text-sm font-semibold text-primary/70">TND</p>
                   <p className="text-xs text-muted-foreground mt-1">{pricePreview.nights} nuit{pricePreview.nights > 1 ? "s" : ""}</p>
                 </div>
-
-                {/* Acompte suggéré */}
                 <div className="bg-background border border-border rounded-lg p-3 flex justify-between items-center shrink-0">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acompte 30%</p>
@@ -863,8 +876,6 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
                   </div>
                   <span className="text-lg font-bold">{fmtPrice(pricePreview.suggestedDeposit)} <span className="text-xs font-normal text-muted-foreground">TND</span></span>
                 </div>
-
-                {/* Détail par nuit */}
                 <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 shrink-0">Détail par nuit</p>
                   <div className="flex-1 overflow-y-auto space-y-1">
@@ -886,7 +897,7 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
               </div>
             )}
 
-            {/* Mode édition sans recalcul ✅ */}
+            {/* ✅ Mode édition sans recalcul : affiche les vraies valeurs de la DB */}
             {!loadingPrice && !pricePreview && isEdit && (
               <div className="flex-1 flex flex-col gap-4 justify-start pt-2">
                 <div className="bg-muted/40 border border-border rounded-xl p-4 text-center">
@@ -914,8 +925,6 @@ function ReservationModal({ reservation, onClose, onCreate, onSave }: {
     </div>
   );
 }
-
-// ─── SOUS-COMPOSANTS ──────────────────────────────────────────
 
 const inputCls     = "w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 const sectionTitle = "text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3";
@@ -977,8 +986,6 @@ function DepositBadge({ r }: { r: Reservation }) {
   );
 }
 
-// ─── LIGNE TABLEAU DESKTOP ────────────────────────────────────
-
 function ReservationRow({ reservation: r, onUpdate, onDeposit, onEdit, searchQuery }: {
   reservation: Reservation;
   onUpdate: (id: string, fields: Partial<Reservation>) => Promise<void>;
@@ -1010,7 +1017,6 @@ function ReservationRow({ reservation: r, onUpdate, onDeposit, onEdit, searchQue
           <span className="font-medium">{new Date(r.checkOutDate).toLocaleDateString("fr-FR")}</span>
         </td>
         <td className="p-4 text-center font-medium">{r.numberOfGuests}</td>
-        {/* ✅ toNum() ici — jamais de NaN ou "object" affiché */}
         <td className="p-4 font-semibold tabular-nums">{fmtPrice(r.totalPrice)} TND</td>
         <td className="p-4"><DepositBadge r={r} /></td>
         <td className="p-4"><StatusBadge s={r.status} /></td>
@@ -1035,8 +1041,6 @@ function ReservationRow({ reservation: r, onUpdate, onDeposit, onEdit, searchQue
   );
 }
 
-// ─── CARTE MOBILE ─────────────────────────────────────────────
-
 function ReservationCardMobile({ reservation: r, onUpdate, onDeposit, onEdit }: {
   reservation: Reservation;
   onUpdate: (id: string, fields: Partial<Reservation>) => Promise<void>;
@@ -1060,7 +1064,6 @@ function ReservationCardMobile({ reservation: r, onUpdate, onDeposit, onEdit }: 
           <span className="text-muted-foreground">•</span>
           <span>👥 {r.numberOfGuests} pers.</span>
         </div>
-        {/* ✅ fmtPrice ici aussi */}
         <div className="text-sm font-bold pt-1">Total : <span className="text-primary">{fmtPrice(r.totalPrice)} TND</span></div>
         <div className="flex items-center justify-between pt-2 border-t border-border/60">
           <DepositBadge r={r} />
@@ -1082,8 +1085,6 @@ function ReservationCardMobile({ reservation: r, onUpdate, onDeposit, onEdit }: 
     </div>
   );
 }
-
-// ─── PANEL ACOMPTE INLINE ─────────────────────────────────────
 
 function DepositInlinePanel({ r, onDeposit, onClose }: {
   r: Reservation;
