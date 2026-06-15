@@ -31,7 +31,7 @@ import {
   addMonths, eachDayOfInterval,
 } from "date-fns";
 import { DayPicker, DateRange, DayButtonProps } from "react-day-picker";
-import "react-day-picker/src/style.css";
+//import "react-day-picker/src/style.css";
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 export const Route = createFileRoute("/booking")({
@@ -583,10 +583,10 @@ function Booking() {
         </section>
 
         {/* ── Contenu dynamique ── */}
-        <section className="container-luxe pb-32 grid lg:grid-cols-12 gap-12 items-start">
+        <section className="container-luxe pb-32 grid lg:grid-cols-12 gap-12 items-start overflow-x-hidden">
 
           {bookingMethod === "direct" ? (
-            <div className="lg:col-span-8 space-y-12">
+            <div className="lg:col-span-8 space-y-12 min-w-0 overflow-hidden">
 
               {/* ── ÉTAPE 1 : Calendrier ── */}
               <div className="border border-neutral-800 p-6 md:p-8 bg-neutral-900/20 shadow-sm">
@@ -633,70 +633,192 @@ function Booking() {
 
                 {/* CSS du calendrier dark */}
                 <style>{`
-                  .booking-rdp {
-                    --rdp-cell-size: 40px;
-                    --rdp-accent-color: #fff;
-                    --rdp-background-color: transparent;
-                    --rdp-selected-color: #000;
-                    --rdp-range-middle-background-color: #1a1a1a;
-                    --rdp-range-middle-color: #fff;
-                    color: white;
-                    width: 100%;
-                  }
-                  .booking-rdp .rdp-months {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 2rem !important;
-                    width: 100%;
-                  }
-                  @media (min-width: 640px) {
-                    .booking-rdp .rdp-months {
-                      flex-direction: row !important;
-                    }
-                  }
-                  .booking-rdp .rdp-month { flex: 1; }
-                  .booking-rdp .rdp-head_cell {
-                    text-transform: uppercase;
-                    font-size: 0.65rem;
-                    color: #525252;
-                    font-weight: 700;
-                    padding-bottom: 8px;
-                  }
-                  .booking-rdp .rdp-caption_label {
-                    font-size: 0.7rem;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.15em;
-                    color: #a3a3a3;
-                  }
-                  .booking-rdp .rdp-nav_button { color: #737373; }
-                  .booking-rdp .rdp-nav_button:hover {
-                    background: #262626;
-                    color: #fff;
-                  }
-                  .booking-rdp .rdp-table {
-                    border-collapse: separate;
-                    border-spacing: 2px;
-                    width: 100%;
-                  }
-                  .booking-rdp .rdp-day_range_middle button {
-                    background: #1c1c1c !important;
-                    border-radius: 0 !important;
-                  }
-                  .booking-rdp .rdp-day_selected button,
-                  .booking-rdp .rdp-day_range_start button,
-                  .booking-rdp .rdp-day_range_end button {
-                    background: #fff !important;
-                    color: #000 !important;
-                    border-radius: 0 !important;
-                  }
-                  .booking-rdp .rdp-day_range_middle[data-unavailable] button,
-                  .booking-rdp .rdp-day_range_middle.rdp-day_disabled button {
-                    background: rgba(136, 19, 55, 0.25) !important;
-                    cursor: not-allowed !important;
-                    pointer-events: none !important;
-                  }
-                `}</style>
+  /* ══════════════════════════════════════════
+     VARIABLES — sur .rdp-root (v9)
+  ══════════════════════════════════════════ */
+  .rdp-root {
+    --rdp-day-height: clamp(36px, 12vw, 44px);
+    --rdp-day-width: clamp(36px, 12vw, 44px);
+    --rdp-day_button-height: clamp(34px, 11vw, 42px);
+    --rdp-day_button-width: clamp(34px, 11vw, 42px);
+    --rdp-accent-color: #fff;
+    --rdp-accent-background-color: #1a1a1a;
+    --rdp-range_middle-background-color: #1a1a1a;
+    --rdp-range_middle-color: #fff;
+    --rdp-range_start-color: #000;
+    --rdp-range_end-color: #000;
+    --rdp-range_start-date-background-color: #fff;
+    --rdp-range_end-date-background-color: #fff;
+    --rdp-range_start-background: linear-gradient(90deg, transparent 50%, #1a1a1a 50%);
+    --rdp-range_end-background: linear-gradient(90deg, #1a1a1a 50%, transparent 50%);
+    --rdp-day_button-border-radius: 0;
+    --rdp-day_button-border: none;
+    --rdp-selected-border: none;
+    --rdp-today-color: #fff;
+    color: white;
+  }
+
+  /* ══════════════════════════════════════════
+     FIX PRINCIPAL — layout mois
+  ══════════════════════════════════════════ */
+  .rdp-months {
+    max-width: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2rem !important;
+    flex-wrap: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  @media (min-width: 640px) {
+    .rdp-months {
+      flex-direction: row !important;
+    }
+  }
+
+  .rdp-month {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ══════════════════════════════════════════
+     GRILLE
+  ══════════════════════════════════════════ */
+  .rdp-month_grid {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: separate !important;
+    border-spacing: 2px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ══════════════════════════════════════════
+     CELLULES JOURS
+  ══════════════════════════════════════════ */
+  .rdp-day {
+    width: auto !important;
+    height: clamp(36px, 12vw, 44px) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* ══════════════════════════════════════════
+     BOUTON JOUR
+  ══════════════════════════════════════════ */
+  .rdp-day_button {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ══════════════════════════════════════════
+     HEADER JOURS SEMAINE
+  ══════════════════════════════════════════ */
+  .rdp-weekday {
+    text-transform: uppercase !important;
+    font-size: 0.65rem !important;
+    color: #525252 !important;
+    font-weight: 700 !important;
+    padding: 0 0 8px 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ══════════════════════════════════════════
+     CAPTION
+  ══════════════════════════════════════════ */
+  .rdp-caption_label {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.15em !important;
+    color: #a3a3a3 !important;
+  }
+
+  /* ══════════════════════════════════════════
+     NAVIGATION
+  ══════════════════════════════════════════ */
+  .rdp-button_previous,
+  .rdp-button_next {
+    color: #737373 !important;
+  }
+  .rdp-button_previous:hover,
+  .rdp-button_next:hover {
+    background: #262626 !important;
+    color: #fff !important;
+  }
+  .rdp-chevron {
+    fill: #737373 !important;
+  }
+
+  /* ══════════════════════════════════════════
+     RANGE MIDDLE
+  ══════════════════════════════════════════ */
+  .rdp-range_middle {
+    background-color: #1c1c1c !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .rdp-range_middle .rdp-day_button {
+    background: transparent !important;
+    color: #fff !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ══════════════════════════════════════════
+     RANGE START / END
+  ══════════════════════════════════════════ */
+  .rdp-range_start,
+  .rdp-range_end {
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .rdp-range_start .rdp-day_button,
+  .rdp-range_end .rdp-day_button {
+    background-color: #fff !important;
+    color: #000 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ══════════════════════════════════════════
+     RANGE START/END — demi-fond
+  ══════════════════════════════════════════ */
+  .rdp-range_start {
+    background: linear-gradient(90deg, transparent 50%, #1c1c1c 50%) !important;
+  }
+  .rdp-range_end {
+    background: linear-gradient(90deg, #1c1c1c 50%, transparent 50%) !important;
+  }
+  .rdp-range_start.rdp-range_end {
+    background: transparent !important;
+  }
+
+  /* ══════════════════════════════════════════
+     INDISPONIBLE DANS RANGE
+  ══════════════════════════════════════════ */
+  .rdp-range_middle[data-unavailable] .rdp-day_button {
+    background: rgba(136, 19, 55, 0.25) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+  }
+`}</style>
 
                 {/* DayPicker */}
                 <div
@@ -763,7 +885,7 @@ function Booking() {
                           <button
                             {...buttonProps}
                             disabled={isDisabled || buttonProps.disabled}
-                            style={{ height: "52px", borderRadius: 0 }}
+                            style={{ borderRadius: 0 }}
                             data-unavailable={isUnavail ? "true" : undefined}
                             title={
                               isUnavail
@@ -971,7 +1093,7 @@ function Booking() {
                         <Tag className="h-3.5 w-3.5 text-amber-400" />
                         {lang === "fr" ? "Code promotionnel" : "Promo code"}
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 w-full min-w-0">
                         <input
                           type="text"
                           value={promoCode}
@@ -981,7 +1103,7 @@ function Booking() {
                           }}
                           disabled={promoApplied}
                           placeholder={lang === "fr" ? "ex: NOEL25" : "ex: SUMMER10"}
-                          className="flex-1 bg-neutral-900 border border-neutral-700 text-white px-4 py-3 text-sm font-mono uppercase outline-none focus:border-white transition placeholder:normal-case placeholder:text-neutral-600 disabled:opacity-50"
+                          className="min-w-0 flex-1 bg-neutral-900 border border-neutral-700 text-white px-3 py-3 text-sm font-mono uppercase outline-none focus:border-white transition placeholder:normal-case placeholder:text-neutral-600 disabled:opacity-50"
                         />
                         {promoApplied ? (
                           <button
