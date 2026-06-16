@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import transporter from '../services/mailer';
+import { sendMail } from '../services/mailer';
 import { Contact } from '../models/Contact';
 
 const router = Router();
@@ -44,7 +44,7 @@ router.post('/', validate, async (req: Request, res: Response) => {
     await Contact.create({ firstName, lastName, email, phone: phone || null, subject, message });
 
     // ── 2. Email interne (notification équipe) ───────────────────
-    await transporter.sendMail({
+    await sendMail({
       from:    process.env.CONTACT_FROM,
       to:      process.env.CONTACT_RECIPIENT,
       replyTo: email,
@@ -54,7 +54,7 @@ router.post('/', validate, async (req: Request, res: Response) => {
     });
 
     // ── 3. Accusé de réception (visiteur) ────────────────────────
-    await transporter.sendMail({
+    await sendMail({
       from:    process.env.CONTACT_FROM,
       to:      email,
       subject: 'Votre message a bien été reçu — Dar B&B',
