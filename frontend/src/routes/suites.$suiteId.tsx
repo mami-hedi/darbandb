@@ -22,11 +22,11 @@ function SuiteDetail() {
 
   // Mapping des images synchronisé avec la page d'accueil
   const suiteImages: Record<string, string> = {
-    "suite-azur": g2,
-    "suite-jasmin": g1,
-    "suite-olive": g4,
-    "suite-royale": g6,
-  };
+  "suite-royale": g6,
+  "suite-sunrise": g1, // Assurez-vous que g1 pointe vers l'image de cette suite
+  "suite-chill-1": g2, // Assurez-vous que g2 pointe vers l'image de cette suite
+  "suite-chill-2": g4, // Assurez-vous que g4 pointe vers l'image de cette suite
+};
 
   const currentImage = suiteImages[suiteId];
   // Récupération sécurisée des données

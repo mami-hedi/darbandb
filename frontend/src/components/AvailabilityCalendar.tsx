@@ -1,14 +1,15 @@
 // ============================================
-// Component: AvailabilityCalendar — v4
+// Component: AvailabilityCalendar — v5.1
 // @/components/AvailabilityCalendar.tsx
 //
-// NOUVEAUTÉS v4 :
-//  • Validation du range : si une date indispo ou bloquée est englobée
-//    entre checkIn et checkOut → message bilingue + reset du checkOut
-//  • isAfterBlockInRange : feedback visuel hover (opacity + curseur interdit)
-//    sur les jours qui seraient après une date bloquée dans le range
-//  • unavailableDateSet : Set<string> pour lookup O(1)
-//  • Toutes les fonctionnalités v3 conservées (admin, blocages, prix, etc.)
+// NOUVEAUTÉS v5.1 :
+//  • Fix : le mode ADMIN distingue maintenant lui aussi les jours de
+//    transition (checkout du client précédent = ambre) des jours
+//    totalement bloqués (rouge) — la même logique que le mode visiteur.
+//  • Gestion des "jours de transition" (turnover days) façon Airbnb :
+//    un jour peut être sélectionnable en DÉPART uniquement (arrivée
+//    bloquée, départ libre) ou en ARRIVÉE uniquement (inverse).
+//  • departureBlocked (champ API) piloté séparément de available.
 // ============================================
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -29,6 +30,7 @@ export interface CalendarDay {
   date: string;
   day: number;
   available: boolean;
+  departureBlocked?: boolean;
 }
 
 interface PriceData {
@@ -78,7 +80,6 @@ export function AvailabilityCalendar({
   const [priceInfo, setPriceInfo] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Modale d'erreur date bloquée ─────────────────────────────────────────
   const [blockedModal, setBlockedModal] = useState<{
     open: boolean;
     message: string;
@@ -88,17 +89,14 @@ export function AvailabilityCalendar({
   const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
-  // ── Toutes les dates indisponibles (réservées + bloquées manuellement) ────
-  // Reconstruit à chaque fetch pour rester synchronisé avec l'API
   const [unavailableDatesFromApi, setUnavailableDatesFromApi] = useState<Set<string>>(new Set());
+  const [departureBlockedDatesFromApi, setDepartureBlockedDatesFromApi] = useState<Set<string>>(new Set());
 
-  // Set unifié : API + blocages manuels admin (pour lookup O(1))
   const unavailableDateSet = useMemo(
     () => new Set([...unavailableDatesFromApi, ...manuallyBlockedDates]),
     [unavailableDatesFromApi, manuallyBlockedDates]
   );
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
   const isPast = (dateStr: string) => dateStr < TODAY_STR;
 
   const isBlockedOrUnavailable = useCallback(
@@ -119,7 +117,6 @@ export function AvailabilityCalendar({
     firstDayOfWeek: new Date(year, month - 1, 1).getDay(),
   });
 
-  // ── Message bilingue pour date bloquée ──────────────────────────────────
   const getBlockedMessage = useCallback(
     (dateStr: string): string => {
       const d = new Date(dateStr + 'T00:00:00');
@@ -146,16 +143,23 @@ export function AvailabilityCalendar({
         fetch(`${API_BASE}/availability/calendar?year=${m2.getFullYear()}&month=${m2.getMonth() + 1}`),
       ]);
       const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      
 
       const allDays = [...(d1.data || []), ...(d2.data || [])];
 
-      // Construire le Set des dates indispo depuis l'API
       const apiUnavailable = new Set<string>(
         allDays
           .filter((d: { available: boolean }) => !d.available)
           .map((d: { date: string }) => d.date)
       );
       setUnavailableDatesFromApi(apiUnavailable);
+
+      const apiDepartureBlocked = new Set<string>(
+        allDays
+          .filter((d: any) => d.departureBlocked)
+          .map((d: { date: string }) => d.date)
+      );
+      setDepartureBlockedDatesFromApi(apiDepartureBlocked);
 
       setMonths([
         buildMonthBlock(m1.getFullYear(), m1.getMonth() + 1, d1.data || []),
@@ -168,14 +172,13 @@ export function AvailabilityCalendar({
     }
   }, [API_BASE, lang]);
 
-  // ── Fetch tarifs ──────────────────────────────────────────────────────────
   const fetchPrices = useCallback(async (base: Date) => {
     setLoadingPrices(true);
     setCustomPrices({});
     try {
       const start = format(startOfMonth(base), 'yyyy-MM-dd');
       const end = format(endOfMonth(addMonths(base, 1)), 'yyyy-MM-dd');
-      const res = await fetch(`${API_BASE}/settings/prices/range?start=${start}&end=${end}`);
+      const res = await fetch('${API_BASE}/settings/prices/range?start=${start}&end=${end}');
       const result = await res.json();
       if (result.success) {
         setBasePrice(result.basePrice);
@@ -193,33 +196,30 @@ export function AvailabilityCalendar({
     fetchPrices(currentDate);
   }, [currentDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Navigation ────────────────────────────────────────────────────────────
   const goToPrevMonth = () => setCurrentDate(p => new Date(p.getFullYear(), p.getMonth() - 1));
   const goToNextMonth = () => setCurrentDate(p => new Date(p.getFullYear(), p.getMonth() + 1));
 
-  // ── Validation du range : cherche la 1ère date bloquée entre from et to ──
+  // ── Validation du range : nuits bloquées entre from et to (exclusif),
+  //    + le "to" lui-même via departureBlocked (pas via available/arrivée) ──
   const findBlockedInRange = useCallback(
     (from: string, to: string): string | null => {
-      // Itération jour par jour entre from et to (exclusifs aux bornes)
       const cursor = new Date(from + 'T00:00:00');
       const end = new Date(to + 'T00:00:00');
-      cursor.setDate(cursor.getDate() + 1); // on exclut le from lui-même
+      cursor.setDate(cursor.getDate() + 1);
       while (cursor < end) {
         const ds = format(cursor, 'yyyy-MM-dd');
         if (isBlockedOrUnavailable(ds)) return ds;
         cursor.setDate(cursor.getDate() + 1);
       }
-      // Vérifier aussi le "to" lui-même (checkout sur date indispo)
-      if (isBlockedOrUnavailable(to)) return to;
+      if (departureBlockedDatesFromApi.has(to)) return to;
       return null;
     },
-    [isBlockedOrUnavailable]
+    [isBlockedOrUnavailable, departureBlockedDatesFromApi]
   );
 
   // ── Clic date ─────────────────────────────────────────────────────────────
   const handleDateClick = useCallback(
     (day: CalendarDay) => {
-      // ── Mode admin ──────────────────────────────────────────────────────
       if (isAdmin) {
         if (manuallyBlockedDates.has(day.date)) {
           onRequestUnblock?.(day.date);
@@ -229,39 +229,38 @@ export function AvailabilityCalendar({
         return;
       }
 
-      // ── Mode visiteur ────────────────────────────────────────────────────
-      // Ignorer les dates passées ou indisponibles
-      if (isPast(day.date) || !day.available || isBlockedOrUnavailable(day.date)) return;
+      if (isPast(day.date)) return;
 
-      // Premier clic (ou reset) → poser le checkIn
+      const canArrive = day.available;
+      const canDepart = !departureBlockedDatesFromApi.has(day.date);
+
       if (!checkIn || (checkIn && checkOut)) {
+        if (!canArrive) return;
         setCheckIn(day.date);
         setCheckOut(null);
         setPriceInfo(null);
         return;
       }
 
-      // Deuxième clic → poser le checkOut
-      // Si clic avant ou égal au checkIn → recommencer depuis cette date
       if (day.date <= checkIn) {
+        if (!canArrive) return;
         setCheckIn(day.date);
         setCheckOut(null);
         setPriceInfo(null);
         return;
       }
 
-      // ── VALIDATION : scanner l'intervalle checkIn→day.date ──────────────
+      if (!canDepart) return;
+
       const blockedInRange = findBlockedInRange(checkIn, day.date);
       if (blockedInRange) {
         const msg = getBlockedMessage(blockedInRange);
         setBlockedModal({ open: true, message: msg });
-        // Réinitialiser le checkOut — l'utilisateur garde le checkIn valide
         setCheckOut(null);
         setPriceInfo(null);
         return;
       }
 
-      // Range valide → calculer le prix
       setCheckOut(day.date);
       const cursor = new Date(checkIn + 'T00:00:00');
       const end = new Date(day.date + 'T00:00:00');
@@ -281,7 +280,7 @@ export function AvailabilityCalendar({
     [
       isAdmin, checkIn, checkOut,
       manuallyBlockedDates, onRequestBlock, onRequestUnblock,
-      isBlockedOrUnavailable, findBlockedInRange,
+      departureBlockedDatesFromApi, findBlockedInRange,
       getBlockedMessage, getPriceForDate, basePrice,
     ]
   );
@@ -290,13 +289,12 @@ export function AvailabilityCalendar({
   const handleMouseEnter = useCallback(
     (day: CalendarDay) => {
       if (isAdmin || !checkIn || checkOut) return;
-      if (isPast(day.date) || isBlockedOrUnavailable(day.date)) return;
+      if (isPast(day.date)) return;
       setHoverDate(day.date);
     },
-    [isAdmin, checkIn, checkOut, isBlockedOrUnavailable]
+    [isAdmin, checkIn, checkOut]
   );
 
-  // ── Helpers range ─────────────────────────────────────────────────────────
   const effectiveEnd = checkOut ?? hoverDate;
 
   const isInRange = useCallback(
@@ -310,14 +308,12 @@ export function AvailabilityCalendar({
 
   const isEdge = (d: string) => d === checkIn || d === checkOut;
 
-  // ── Feedback visuel hover : jour disponible mais après une date bloquée ──
-  // Si l'utilisateur a posé un checkIn et survole un checkOut potentiel
-  // qui engloberait une date bloquée, on grise les jours "inatteignables".
+  // ── Feedback visuel hover : ce jour est-il inatteignable comme checkout ? ──
   const isAfterBlockInHoverRange = useCallback(
     (dateStr: string): boolean => {
       if (!checkIn || checkOut || !hoverDate) return false;
       if (dateStr <= checkIn) return false;
-      // Y a-t-il une date bloquée entre checkIn et ce jour ?
+      if (departureBlockedDatesFromApi.has(dateStr)) return true;
       const cursor = new Date(checkIn + 'T00:00:00');
       const target = new Date(dateStr + 'T00:00:00');
       cursor.setDate(cursor.getDate() + 1);
@@ -328,7 +324,7 @@ export function AvailabilityCalendar({
       }
       return false;
     },
-    [checkIn, checkOut, hoverDate, isBlockedOrUnavailable]
+    [checkIn, checkOut, hoverDate, isBlockedOrUnavailable, departureBlockedDatesFromApi]
   );
 
   const formatMonthLabel = (year: number, month: number) =>
@@ -348,7 +344,7 @@ export function AvailabilityCalendar({
 
   // ── Rendu d'un mois ───────────────────────────────────────────────────────
   const renderMonth = (block: MonthBlock) => (
-    <div key={`${block.year}-${block.month}`} className="flex-1 min-w-[280px]">
+    <div key={'${block.year}-${block.month}'} className="flex-1 min-w-[280px]">
       <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-center mb-4 capitalize text-stone-700 dark:text-stone-300">
         {formatMonthLabel(block.year, block.month)}
       </h3>
@@ -368,7 +364,6 @@ export function AvailabilityCalendar({
           const past = isPast(day.date);
           const unavailable = !day.available;
           const manuallyBlocked = manuallyBlockedDates.has(day.date);
-          // Pour le visiteur : toute date non dispo (réservée OU bloquée manuellement)
           const isUnavailForVisitor = unavailable || manuallyBlocked;
           const note = blockNotes[day.date];
           const price = getPriceForDate(day.date);
@@ -377,9 +372,8 @@ export function AvailabilityCalendar({
           const inRange = isInRange(day.date);
           const isCheckInDay = day.date === checkIn;
           const isCheckOutDay = day.date === checkOut;
+          const departBlocked = !!day.departureBlocked;
 
-          // Feedback hover : ce jour est dispo mais le range pour l'atteindre
-          // passerait par une date bloquée → on le signale visuellement
           const afterBlock = !isAdmin && !past && !isUnavailForVisitor
             ? isAfterBlockInHoverRange(day.date)
             : false;
@@ -396,6 +390,12 @@ export function AvailabilityCalendar({
             priceClass = 'hidden';
             disabled = true;
 
+          } else if (edge) {
+            // La sélection en cours prime toujours sur le statut brut
+            cellClass = 'bg-stone-950 dark:bg-white ring-2 ring-stone-950 dark:ring-white z-10 cursor-pointer';
+            dayNumClass = 'text-white dark:text-stone-950 font-bold';
+            priceClass = 'text-stone-400 dark:text-stone-600';
+
           } else if (manuallyBlocked && isAdmin) {
             cellClass = 'bg-violet-50 dark:bg-violet-950/40 border border-violet-300 dark:border-violet-700 cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/50 group';
             dayNumClass = 'text-violet-700 dark:text-violet-300 font-bold';
@@ -403,32 +403,46 @@ export function AvailabilityCalendar({
             titleAttr = note ? `🔒 ${note}` : '🔒 Bloqué manuellement — cliquer pour débloquer';
 
           } else if (isUnavailForVisitor && !isAdmin) {
-            // Visiteur : date réservée OU bloquée manuellement → même rendu rose
-            cellClass = 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 cursor-not-allowed';
-            dayNumClass = 'text-rose-400 dark:text-rose-500';
-            priceClass = 'hidden';
-            disabled = true;
+            if (!departBlocked) {
+              // Arrivée bloquée, mais départ possible → "date de départ uniquement"
+              const clickableAsCheckout = !!checkIn && !checkOut && day.date > checkIn;
+              cellClass = clickableAsCheckout
+                ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                : 'bg-stone-100 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 cursor-not-allowed opacity-70';
+              dayNumClass = 'text-stone-500 dark:text-stone-400';
+              priceClass = 'hidden';
+              disabled = !clickableAsCheckout;
+              titleAttr = lang === 'fr' ? 'Date de départ uniquement' : 'Departure date only';
+            } else {
+              // Totalement bloqué
+              cellClass = 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 cursor-not-allowed';
+              dayNumClass = 'text-rose-400 dark:text-rose-500';
+              priceClass = 'hidden';
+              disabled = true;
+            }
 
           } else if (unavailable && isAdmin) {
-            cellClass = 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 cursor-not-allowed opacity-70';
-            dayNumClass = 'text-red-500 dark:text-red-400';
+            if (departBlocked) {
+              // Totalement bloqué : arrivée ET départ impossibles
+              cellClass = 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 cursor-not-allowed opacity-70';
+              dayNumClass = 'text-red-500 dark:text-red-400';
+              titleAttr = 'Réservé par un client';
+            } else {
+              // ✅ Jour de transition : checkout du client précédent
+              cellClass = 'bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 cursor-not-allowed opacity-80';
+              dayNumClass = 'text-amber-600 dark:text-amber-400';
+              titleAttr = 'Date de départ du client précédent (checkout)';
+            }
             priceClass = 'hidden';
             disabled = true;
-            titleAttr = 'Réservé par un client';
 
           } else if (afterBlock) {
-            // Dispo mais inatteignable sans passer par une date bloquée
             cellClass = 'bg-white dark:bg-stone-900 border border-rose-200 dark:border-rose-900/40 opacity-40 cursor-not-allowed transition-all';
             dayNumClass = 'text-stone-500 dark:text-stone-400';
             priceClass = 'hidden';
             titleAttr = lang === 'fr'
               ? 'Une date non disponible est dans cet intervalle'
               : 'An unavailable date is within this range';
-
-          } else if (edge) {
-            cellClass = 'bg-stone-950 dark:bg-white ring-2 ring-stone-950 dark:ring-white z-10 cursor-pointer';
-            dayNumClass = 'text-white dark:text-stone-950 font-bold';
-            priceClass = 'text-stone-400 dark:text-stone-600';
 
           } else if (inRange) {
             cellClass = 'bg-stone-100 dark:bg-stone-800/60 cursor-pointer';
@@ -444,6 +458,9 @@ export function AvailabilityCalendar({
               ? 'text-amber-500 font-bold'
               : 'text-stone-400 dark:text-stone-500';
             if (isAdmin) titleAttr = 'Cliquer pour bloquer cette date';
+            if (!isAdmin && departBlocked) {
+              titleAttr = lang === 'fr' ? "Date d'arrivée uniquement" : 'Arrival date only';
+            }
           }
 
           const label = isCheckInDay
@@ -466,44 +483,46 @@ export function AvailabilityCalendar({
                 cellClass
               )}
             >
-              {/* Croix sur indispo visiteur (réservé OU bloqué manuellement) */}
-              {isUnavailForVisitor && !past && !isAdmin && (
+              {/* Croix uniquement sur les dates TOTALEMENT bloquées */}
+              {isUnavailForVisitor && !past && !isAdmin && !edge && departBlocked && (
                 <span aria-hidden className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <span className="absolute w-5 h-[1.5px] bg-rose-300 dark:bg-rose-700 rotate-45" />
                   <span className="absolute w-5 h-[1.5px] bg-rose-300 dark:bg-rose-700 -rotate-45" />
                 </span>
               )}
 
-              {/* Cadenas admin sur date bloquée manuellement */}
+              {/* Croix côté admin, uniquement sur les dates totalement bloquées */}
+              {unavailable && isAdmin && !past && departBlocked && (
+                <span aria-hidden className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="absolute w-5 h-[1.5px] bg-red-300 dark:bg-red-700 rotate-45" />
+                  <span className="absolute w-5 h-[1.5px] bg-red-300 dark:bg-red-700 -rotate-45" />
+                </span>
+              )}
+
               {manuallyBlocked && isAdmin && (
                 <Lock size={10} className="absolute top-1 right-1 text-violet-500 dark:text-violet-400" aria-hidden />
               )}
 
-              {/* Icône cadenas au hover admin sur date dispo */}
               {!manuallyBlocked && !unavailable && !past && isAdmin && (
                 <Lock size={9} className="absolute top-1 right-1 text-stone-300 dark:text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden />
               )}
 
-              {/* Numéro jour */}
               <span className={cn('text-xs font-semibold leading-none z-10', dayNumClass)}>
                 {day.day}
               </span>
 
-              {/* Prix visiteur */}
-              {!past && !isUnavailForVisitor && !isAdmin && !afterBlock && (
+              {!past && !isUnavailForVisitor && !isAdmin && !afterBlock && !edge && (
                 <span className={cn('text-[8px] font-mono leading-none z-10', priceClass)}>
                   {price} DT
                 </span>
               )}
 
-              {/* Prix admin sur date dispo */}
               {!past && !unavailable && !manuallyBlocked && isAdmin && (
                 <span className={cn('text-[8px] font-mono leading-none z-10', priceClass)}>
                   {price} DT
                 </span>
               )}
 
-              {/* Étiquette In/Out */}
               {label && (
                 <span className="absolute bottom-0 left-0 right-0 text-[7px] text-center font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 leading-none pb-0.5">
                   {label}
@@ -520,7 +539,6 @@ export function AvailabilityCalendar({
   return (
     <div className={cn('w-full', !isAdmin && 'max-w-4xl mx-auto p-6 md:p-8 border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-sm')}>
 
-      {/* ── Modale date bloquée ── */}
       {blockedModal.open && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-6 max-w-sm w-full shadow-2xl rounded-2xl relative">
@@ -566,7 +584,6 @@ export function AvailabilityCalendar({
         </div>
       )}
 
-      {/* Bannière guide après reset de checkOut */}
       {!isAdmin && checkIn && !checkOut && (
         <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs rounded-xl flex items-center gap-2">
           <AlertTriangle size={14} className="shrink-0" />
@@ -582,7 +599,6 @@ export function AvailabilityCalendar({
         </div>
       )}
 
-      {/* ── Récap prix visiteur ── */}
       {!isAdmin && priceInfo && checkIn && checkOut && (
         <div className="mb-6 p-4 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 animate-in fade-in zoom-in duration-300">
           <div className="flex justify-between items-center text-sm mb-1">
@@ -604,7 +620,6 @@ export function AvailabilityCalendar({
         </div>
       )}
 
-      {/* ── Navigation mois ── */}
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={goToPrevMonth}
@@ -629,14 +644,12 @@ export function AvailabilityCalendar({
         </button>
       </div>
 
-      {/* ── Grille deux mois ── */}
       <div className={cn('transition-opacity duration-200', loading || loadingPrices ? 'opacity-50 pointer-events-none' : 'opacity-100')}>
         <div className="flex flex-col md:flex-row gap-8 md:gap-12">
           {months.map(renderMonth)}
         </div>
       </div>
 
-      {/* ── Légende visiteur ── */}
       {!isAdmin && (
         <div className="mt-6 pt-4 border-t border-stone-100 dark:border-stone-800 flex flex-wrap gap-4 text-[10px] text-stone-400">
           <span className="flex items-center gap-1.5">
@@ -646,6 +659,10 @@ export function AvailabilityCalendar({
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 inline-block" />
             {lang === 'fr' ? 'Indisponible' : 'Unavailable'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 inline-block" />
+            {lang === 'fr' ? 'Départ uniquement' : 'Departure only'}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 opacity-30 bg-stone-300 inline-block" />
@@ -662,7 +679,6 @@ export function AvailabilityCalendar({
         </div>
       )}
 
-      {/* ── Légende admin ── */}
       {isAdmin && (
         <div className="mt-6 pt-4 border-t border-stone-100 dark:border-stone-800 flex flex-wrap gap-4 text-[10px] text-stone-500">
           <span className="flex items-center gap-1.5">
@@ -678,11 +694,15 @@ export function AvailabilityCalendar({
             Réservé (client)
           </span>
           <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-amber-100 border border-amber-300 inline-block" />
+            Checkout du client précédent
+          </span>
+          <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 opacity-30 bg-stone-300 inline-block" />
             Passé
           </span>
         </div>
       )}
-    </div>
+        </div>
   );
-}
+};

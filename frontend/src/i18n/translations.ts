@@ -44,36 +44,36 @@ export const dict = {
       bookCta: "Réserver cette suite",
       amenitiesTitle: "Équipements de la suite",
       items: [
-        { id: "suite-azur", t: "Suite Azur", d: "Vue panoramique sur le golfe." },
-        { id: "suite-olive", t: "Suite Olive", d: "Sérénité et tons organiques." },
-        { id: "suite-jasmin", t: "Suite Jasmin", d: "Lumière et accès patio." },
-        { id: "suite-royale", t: "Suite Royale", d: "Chaleur des matières nobles." },
-      ],
+  { id: "suite-royale", t: "Royal Suite", d: "Dressing luxe et vue mer." },
+  { id: "suite-sunrise", t: "Sunrise Suite", d: "Face au lever du soleil." },
+  { id: "suite-chill-1", t: "Chill Suite I", d: "Calme et marbre Calacatta." },
+  { id: "suite-chill-2", t: "Chill Suite II", d: "Intimité et ressourcement." },
+],
       details: {
-        "suite-azur": {
-          title: "Suite Azur",
-          tagline: "Vue mer & Sérénité",
-          description: "Plongez dans un havre de paix aux nuances méditerranéennes. La Suite Azur offre des volumes généreux, une lumière naturelle traversante et des finitions haut de gamme alliant le bois noble à la pureté du blanc.",
-          specs: ["Superficie : 45m²", "Lit King Size double", "Terrasse privée vue piscine", "Salle de bain en marbre"]
-        },
-        "suite-olive": {
-          title: "Suite Olive",
-          tagline: "Douceur & Authenticité",
-          description: "Inspirée des oliviers centenaires de la région, cette suite associe des textures organiques à des lignes contemporaines épurées. Un espace chaleureux propice à la détente absolue.",
-          specs: ["Superficie : 42m²", "Lit King Size double", "Espace salon intégré", "Douche à l'italienne en pierre"]
-        },
-        "suite-jasmin": {
-          title: "Suite Jasmin",
-          tagline: "Élégance & Parfum d'Orient",
-          description: "Véritable hommage à la fleur emblématique d'Hammamet, la Suite Jasmin marie subtilement touches artisanales locales et confort moderne absolu. Un cocon de douceur très lumineux.",
-          specs: ["Superficie : 40m²", "Lit de luxe double", "Vue jardin aromatique", "Baignoire îlot autoportante"]
-        },
-        "suite-royale": {
-          title: "Suite Royale",
-          tagline: "Lumière dorée & Raffinement",
-          description: "La Suite Royale séduit par ses teintes chaleureuses et son atmosphère intimiste. Ses détails en noir mat et bois brûlé contrastent magnifiquement avec la clarté de l'architecture moderne.",
-          specs: ["Superficie : 50m²", "Lit King Size", "Salon privé indépendant", "Accès direct solarium"]
-        }
+  "suite-royale": {
+    title: "Royal Suite",
+    tagline: "Luxe & Vue Panoramique",
+    description: "La pièce maîtresse de la villa. Dispose d'un dressing luxe avec îlot vitré à montres, d'une baignoire îlot majestueuse et d'un accès direct au balcon panoramique offrant une vue imprenable sur la mer.",
+    specs: ["Superficie : 50m²", "Lit King Size", "Dressing avec îlot vitré", "Baignoire îlot royale", "Accès balcon panoramique"]
+  },
+  "suite-sunrise": {
+    title: "Sunrise Suite",
+    tagline: "Éveil face à la Méditerranée",
+    description: "Orientée plein est pour capter les premiers rayons du soleil. Une suite lumineuse et apaisante partageant le balcon panoramique pour des moments de contemplation uniques.",
+    specs: ["Superficie : 45m²", "Lit King Size", "Orientation Est", "Accès balcon panoramique", "Salle de bain privative"]
+  },
+  "suite-chill-1": {
+    title: "Chill Suite I",
+    tagline: "Nid de quiétude",
+    description: "Suite intérieure élégante et parfaitement calme. Finitions en marbre Calacatta et confort king size pour une parenthèse de repos absolu.",
+    specs: ["Superficie : 40m²", "Lit King Size", "Environnement calme", "Marbre Calacatta", "Salle de bain privative"]
+  },
+  "suite-chill-2": {
+    title: "Chill Suite II",
+    tagline: "Sérénité intérieure",
+    description: "Conçue pour se ressourcer loin du bruit, cette suite offre la même exigence de confort et les mêmes finitions luxueuses en marbre Calacatta.",
+    specs: ["Superficie : 40m²", "Lit King Size", "Environnement calme", "Marbre Calacatta", "Salle de bain privative"]
+  }
       }
     },
     wine: {
@@ -88,6 +88,34 @@ export const dict = {
     pricing: { eyebrow: "Tarifs", title: "Un prix pour la villa entière", from: "À partir de", price: "450 €", per: "/ nuit · villa entière", note: "3 nuits minimum · Petit-déjeuner inclus", cta: "Demander une date" },
     blogTitle: "Blog", blogSub: "Récits, adresses et inspirations.",
     galleryTitle: "Galerie", gallerySub: "Lumière, matières, paysage.",
+
+    // Légendes de la galerie photo, dans le MÊME ORDRE que le tableau `items`
+    // du fichier @/routes/gallery.tsx
+    gallery: {
+      items: [
+        "Piscine & Terrasse",
+        "Cuisine Équipée",
+        "Escalier",
+        "Suite",
+        "Piscine & Terrasse",
+        "Terrasse",
+        "Suite",
+        "Terrasse",
+        "Piscine & Terrasse",
+        "Piscine & Terrasse",
+        "Piscine & Terrasse",
+        "Salon",
+        "Salle de Bain",
+        "Suite",
+        "Cuisine & salon",
+        "Suite",
+        "Détails & Matières",
+        "Suite",
+        "Cuisine Équipée",
+        "Dressing",
+        "Suite",
+      ],
+    },
     
     // SECTION CONTACT CORRIGÉE (Services & Support sans dates de réservation)
     contact: {
@@ -261,36 +289,36 @@ philosophy: {
       bookCta: "Book this suite",
       amenitiesTitle: "Suite Amenities",
       items: [
-        { id: "suite-azur", t: "Azur Suite", d: "Panoramic views of the gulf." },
-        { id: "suite-olive", t: "Olive Suite", d: "Serenity and organic tones." },
-        { id: "suite-jasmin", t: "Jasmin Suite", d: "Light and patio access." },
-        { id: "suite-royale", t: "Royal Suite", d: "Warmth of noble materials." },
-      ],
+  { id: "suite-royale", t: "Royal Suite", d: "Luxury dressing and sea view." },
+  { id: "suite-sunrise", t: "Sunrise Suite", d: "Facing the sunrise." },
+  { id: "suite-chill-1", t: "Chill Suite I", d: "Quiet and Calacatta marble." },
+  { id: "suite-chill-2", t: "Chill Suite II", d: "Privacy and serenity." },
+],
       details: {
-        "suite-azur": {
-          title: "Azur Suite",
-          tagline: "Sea view & Serenity",
-          description: "Immerse yourself in a haven of peace with Mediterranean hues. The Azur Suite offers generous volumes, ambient natural light, and high-end finishes blending noble wood with pure whites.",
-          specs: ["Size: 45sqm", "Double King Size bed", "Private terrace with pool view", "Marble bathroom"]
-        },
-        "suite-olive": {
-          title: "Olive Suite",
-          tagline: "Softness & Authenticity",
-          description: "Inspired by the region's century-old olive trees, this suite pairs organic textures with sleek contemporary lines. A warm, welcoming space designed for pure relaxation.",
-          specs: ["Size: 42sqm", "Double King Size bed", "Integrated lounge area", "Walk-in stone shower"]
-        },
-        "suite-jasmin": {
-          title: "Jasmin Suite",
-          tagline: "Elegance & Eastern scent",
-          description: "A true tribute to the iconic flower of Hammamet, the Jasmin Suite subtly blends local craftsmanship touches with absolute modern comfort. A very bright and soft cocoon.",
-          specs: ["Size: 40sqm", "Deluxe double bed", "Aromatic guesthouse view", "Freestanding island bathtub"]
-        },
-        "suite-royale": {
-          title: "Royal Suite",
-          tagline: "Golden light & Refinement",
-          description: "The Royal Suite captivates with its warm tones and intimate atmosphere. Matte black and scorched wood details contrast beautifully with the crisp, modern architectural layout.",
-          specs: ["Size: 50sqm", "King Size bed", "Independent private lounge", "Direct solarium access"]
-        }
+  "suite-royale": {
+    title: "Royal Suite",
+    tagline: "Luxury & Panoramic View",
+    description: "The villa's centerpiece. Features a luxury walk-in closet with a glass watch display island, a majestic freestanding bathtub, and direct access to the panoramic balcony with stunning sea views.",
+    specs: ["Size: 50sqm", "King Size bed", "Dressing with glass island", "Royal freestanding tub", "Panoramic balcony access"]
+  },
+  "suite-sunrise": {
+    title: "Sunrise Suite",
+    tagline: "Waking up to the Mediterranean",
+    description: "East-facing to capture the first rays of sunlight. A bright, soothing suite sharing the panoramic balcony for unique moments of contemplation.",
+    specs: ["Size: 45sqm", "King Size bed", "East orientation", "Panoramic balcony access", "Private bathroom"]
+  },
+  "suite-chill-1": {
+    title: "Chill Suite I",
+    tagline: "Nest of Tranquility",
+    description: "An elegant, perfectly quiet interior suite. Featuring Calacatta marble finishes and king-size comfort for an absolute restful getaway.",
+    specs: ["Size: 40sqm", "King Size bed", "Quiet environment", "Calacatta marble", "Private bathroom"]
+  },
+  "suite-chill-2": {
+    title: "Chill Suite II",
+    tagline: "Interior Serenity",
+    description: "Designed to recharge away from the noise, this suite offers the same high standard of comfort and luxurious Calacatta marble finishes.",
+    specs: ["Size: 40sqm", "King Size bed", "Quiet environment", "Calacatta marble", "Private bathroom"]
+  }
       }
     },
     wine: {
@@ -305,6 +333,34 @@ philosophy: {
     pricing: { eyebrow: "Rates", title: "One price for the whole villa", from: "From", price: "€450", per: "/ night · whole villa", note: "3-night minimum · Breakfast included", cta: "Request dates" },
     blogTitle: "Blog", blogSub: "Stories, places, inspirations.",
     galleryTitle: "Gallery", gallerySub: "Light, materials, landscape.",
+
+    // Gallery captions, in the SAME ORDER as the `items` array
+    // in @/routes/gallery.tsx
+    gallery: {
+      items: [
+        "Pool & Terrace",
+        "Fitted Kitchen",
+        "Staircase",
+        "Suite",
+        "Pool & Terrace",
+        "Terrace",
+        "Suite",
+        "Terrace",
+        "Pool & Terrace",
+        "Pool & Terrace",
+        "Pool & Terrace",
+        "Living Room",
+        "Bathroom",
+        "Suite",
+        "Kitchen & Living Room",
+        "Suite",
+        "Details & Materials",
+        "Suite",
+        "Fitted Kitchen",
+        "Dressing Room",
+        "Suite",
+      ],
+    },
     
     // CONTACT TRANSLATION
     contact: {

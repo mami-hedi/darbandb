@@ -29,7 +29,8 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type SuiteId = "suite-azur" | "suite-olive" | "suite-jasmin" | "suite-royale";
+// Remplacez votre type SuiteId actuel par celui-ci :
+type SuiteId = "suite-royale" | "suite-sunrise" | "suite-chill-1" | "suite-chill-2";
 
 interface SuiteItem {
   id: SuiteId;
@@ -54,11 +55,11 @@ function Home() {
   const [activeExperience, setActiveExperience] = useState<ExperienceItem | null>(null);
 
   const suiteImages: Record<SuiteId, string> = {
-    "suite-azur": g2,
-    "suite-jasmin": g1,
-    "suite-olive": g4,
-    "suite-royale": g6,
-  };
+  "suite-royale": g6,
+  "suite-sunrise": g1, // À ajuster selon votre fichier d'import
+  "suite-chill-1": g2, // À ajuster selon votre fichier d'import
+  "suite-chill-2": g4, // À ajuster selon votre fichier d'import
+};
 
   const experiences: ExperienceItem[] = [
   {

@@ -1,83 +1,72 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
-import pino from 'pino';
+// src/services/whatsappService.ts
+import axios from 'axios';
 
-// Variables globales pour maintenir la socket en mémoire
-let sock: any = null;
-
-/**
- * Initialise la connexion WhatsApp avec persistance de session
- */
-async function connectToWhatsApp() {
-    // Le dossier 'auth_info' stockera votre session (QR code scanné 1 seule fois)
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
-
-    sock = makeWASocket({
-        logger: pino({ level: 'silent' }) as any,
-        auth: state,
-        printQRInTerminal: true, // Affiche le QR code dans votre console au lancement
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', (update: any) => {
-        const { connection, lastDisconnect } = update;
-        
-        if (connection === 'close') {
-            // Reconnexion automatique si la déconnexion n'est pas volontaire
-            const shouldReconnect = (lastDisconnect.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                console.log('🔄 Reconnexion en cours...');
-                connectToWhatsApp();
-            }
-        } else if (connection === 'open') {
-            console.log('✅ Service WhatsApp opérationnel');
-        }
-    });
+interface ReservationPayload {
+  refNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  numberOfGuests: number;
+  checkInDate: string | Date;
+  checkOutDate: string | Date;
+  totalPrice: number;
+  originalPrice?: number | null;
+  promoCode?: string | null;
+  promoDiscount?: number | null;
+  depositAmount: number;
+  specialRequests?: string | null;
+  nights: number;
 }
 
-/**
- * Fonction utilitaire pour attendre que la socket soit prête
- */
-const waitForSocket = async () => {
-    let retries = 10;
-    while (!sock && retries > 0) {
-        await new Promise(res => setTimeout(res, 1000));
-        retries--;
+export async function sendReservationWhatsApp(data: ReservationPayload): Promise<void> {
+  const token      = process.env.WHATSAPP_TOKEN;
+  const phoneNumId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const adminNum   = process.env.ADMIN_WHATSAPP_NUMBER;
+
+  if (!token || !phoneNumId || !adminNum) {
+    console.warn('[WhatsApp] Variables manquantes — envoi ignoré');
+    return;
+  }
+
+  const checkIn  = new Date(data.checkInDate).toLocaleDateString('fr-TN');
+  const checkOut = new Date(data.checkOutDate).toLocaleDateString('fr-TN');
+
+  const promoLine = data.promoCode
+    ? `🏷️ *Promo :* ${data.promoCode} (−${data.promoDiscount}%)\n   *Prix original :* ${data.originalPrice} DT\n`
+    : '';
+
+  const message = `
+🏡 *Nouvelle réservation — Dar B&B*
+📋 *Réf :* ${data.refNumber}
+
+👤 *Client :* ${data.firstName} ${data.lastName}
+📧 *Email :* ${data.email}
+📞 *Tél :* ${data.phone}
+👥 *Personnes :* ${data.numberOfGuests}
+
+📅 *Arrivée :* ${checkIn}
+📅 *Départ :* ${checkOut}
+🌙 *Durée :* ${data.nights} nuit${data.nights > 1 ? 's' : ''}
+
+${promoLine}💰 *Total :* ${data.totalPrice} DT
+💳 *Acompte (30%) :* ${data.depositAmount} DT
+💬 *Demandes :* ${data.specialRequests || 'Aucune'}
+`.trim();
+
+  await axios.post(
+    `https://graph.facebook.com/v19.0/${phoneNumId}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to: adminNum,
+      type: 'text',
+      text: { body: message },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     }
-    return sock;
-};
-
-// Initialisation au démarrage du serveur
-connectToWhatsApp().catch(err => console.error('Erreur init WhatsApp:', err));
-
-/**
- * Envoie une notification pour une nouvelle réservation
- */
-export const notifyNewReservation = async (reservation: any) => {
-    const activeSock = await waitForSocket();
-    if (!activeSock) throw new Error('WhatsApp non initialisé');
-
-    const adminPhone = process.env.ADMIN_WHATSAPP_NUMBER || ''; 
-    const message = `🔔 *Nouvelle Réservation Dar B&B*
-👤 Client: ${reservation.firstName} ${reservation.lastName}
-📅 Dates: ${reservation.checkInDate} au ${reservation.checkOutDate}
-👥 Invités: ${reservation.numberOfGuests}
-💰 Total: ${reservation.totalPrice} TND
-📝 Demandes: ${reservation.specialRequests || 'Aucune'}`;
-
-    await activeSock.sendMessage(adminPhone, { text: message });
-};
-
-/**
- * Envoie une notification pour une annulation
- */
-export const notifyCancellation = async (reservation: any) => {
-    const activeSock = await waitForSocket();
-    if (!activeSock) throw new Error('WhatsApp non initialisé');
-
-    const adminPhone = process.env.ADMIN_WHATSAPP_NUMBER || '';
-    const message = `❌ *Annulation de réservation*
-La réservation de ${reservation.firstName} ${reservation.lastName} (${reservation.checkInDate}) a été annulée.`;
-
-    await activeSock.sendMessage(adminPhone, { text: message });
-};
+  );
+}

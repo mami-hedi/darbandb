@@ -1,19 +1,7 @@
 // ============================================
-// Page Booking — Complète avec validation
-//   des dates bloquées (bilingue FR/EN)
-//   + Code promotionnel (pct) avec récap sidebar
+// Page Booking — v2 avec gestion des jours de transition
+//   (arrivée/départ façon Airbnb) + tout le reste inchangé
 // @/routes/booking.tsx
-//
-// FONCTIONNALITÉS :
-//  • Dates passées   → grisées, non cliquables
-//  • Dates indispo   → fond rose, croix, non cliquables
-//  • handleRangeSelect → intercepte la sélection en temps réel
-//    si une date dans le range est bloquée : message bilingue + reset du to
-//  • handleSubmit    → filet de sécurité final côté client
-//  • getUnavailableMessage → message bilingue fr/en avec la date formatée
-//  • Tarification dynamique par jour
-//  • Code promo → validation via POST /api/promos/validate
-//    affiche sous-total / réduction / total final dans la sidebar
 // ============================================
 
 import { createFileRoute, useSearch } from "@tanstack/react-router";
@@ -63,6 +51,7 @@ function Booking() {
   const { checkIn, checkOut } = useSearch({ from: "/booking" });
 
   const today = startOfToday();
+  const todayStr = format(today, "yyyy-MM-dd");
 
   const [sent, setSent] = useState(false);
   const [bookingMethod, setBookingMethod] = useState<"direct" | "airbnb">(
@@ -77,6 +66,8 @@ function Booking() {
 
   // Dates indisponibles
   const [unavailableDates, setUnavailableDates] = useState<Date[]>([]);
+  // ✅ NOUVEAU : dates où le DÉPART est impossible (nuit de la veille occupée)
+  const [departureBlockedDates, setDepartureBlockedDates] = useState<Date[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
 
   const [range, setRange] = useState<DateRange | undefined>(() => {
@@ -159,11 +150,18 @@ function Booking() {
       const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
 
       const allDays = [...(d1.data || []), ...(d2.data || [])];
+
       const unavailable = allDays
         .filter((d: { available: boolean; date: string }) => !d.available)
         .map((d: { date: string }) => new Date(d.date + "T00:00:00"));
 
+      // ✅ NOUVEAU : dates où le départ est bloqué
+      const departBlocked = allDays
+        .filter((d: any) => d.departureBlocked)
+        .map((d: { date: string }) => new Date(d.date + "T00:00:00"));
+
       setUnavailableDates(unavailable);
+      setDepartureBlockedDates(departBlocked);
     } catch (err) {
       console.error("Erreur disponibilités:", err);
     } finally {
@@ -192,9 +190,21 @@ function Booking() {
     [unavailableDates]
   );
 
+  // ✅ NOUVEAU : Set des dates où le départ est bloqué
+  const departureBlockedSet = useMemo(
+    () => new Set(departureBlockedDates.map((d) => format(d, "yyyy-MM-dd"))),
+    [departureBlockedDates]
+  );
+
   const isDateUnavailable = useCallback(
     (date: Date): boolean => unavailableDateSet.has(format(date, "yyyy-MM-dd")),
     [unavailableDateSet]
+  );
+
+  // ✅ NOUVEAU
+  const isDateDepartureBlocked = useCallback(
+    (date: Date): boolean => departureBlockedSet.has(format(date, "yyyy-MM-dd")),
+    [departureBlockedSet]
   );
 
   // ── Message bilingue pour date bloquée ───────────────────────────────────
@@ -213,6 +223,29 @@ function Booking() {
       };
     },
     [lang]
+  );
+
+  // ✅ NOUVEAU : le matcher `disabled` du DayPicker.
+  // Un jour "départ uniquement" (arrivée bloquée, départ libre) doit rester
+  // désactivé tant qu'aucun checkIn n'est posé, mais devenir cliquable dès
+  // qu'un checkIn valide précède ce jour — exactement le comportement Airbnb.
+  const isDisabledDay = useCallback(
+    (date: Date): boolean => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      if (dateStr < todayStr) return true;
+
+      const arrivalBlocked = isDateUnavailable(date);
+      const departBlocked = isDateDepartureBlocked(date);
+
+      const hasOpenCheckIn = !!range?.from && !range?.to;
+      if (hasOpenCheckIn && dateStr > format(range!.from!, "yyyy-MM-dd")) {
+        // Ce jour est un candidat DÉPART → seule departBlocked compte
+        return departBlocked;
+      }
+      // Ce jour est un candidat ARRIVÉE (ou reset) → seule arrivalBlocked compte
+      return arrivalBlocked;
+    },
+    [range, isDateUnavailable, isDateDepartureBlocked, todayStr]
   );
 
   // ── Interception de la sélection ─────────────────────────────────────────
@@ -237,11 +270,19 @@ function Booking() {
       if (newRange.from && newRange.to) {
         let blockedDay: Date | undefined;
         try {
-          const days = eachDayOfInterval({
+          // ✅ On exclut le dernier jour (checkout) de la vérification "nuit occupée" :
+          // il représente un DÉPART, pas une nuit à occuper.
+          const nights = eachDayOfInterval({
             start: newRange.from,
             end: newRange.to,
-          });
-          blockedDay = days.find((day) => isDateUnavailable(day));
+          }).slice(0, -1);
+
+          blockedDay = nights.find((day) => isDateUnavailable(day));
+
+          // ✅ Le jour de checkout est vérifié séparément, via departureBlocked
+          if (!blockedDay && isDateDepartureBlocked(newRange.to)) {
+            blockedDay = newRange.to;
+          }
         } catch {
           // eachDayOfInterval lève si start > end
         }
@@ -256,7 +297,7 @@ function Booking() {
 
       setRange(newRange);
     },
-    [isDateUnavailable, getUnavailableMessage]
+    [isDateUnavailable, isDateDepartureBlocked, getUnavailableMessage]
   );
 
   // ── Calcul total ──────────────────────────────────────────────────────────
@@ -307,7 +348,7 @@ function Booking() {
       });
       const data = await res.json();
       if (data.success) {
-        setPromoResult(data.data); // { pct, code, description }
+        setPromoResult(data.data);
         setPromoApplied(true);
       } else {
         setPromoError(
@@ -347,8 +388,12 @@ function Booking() {
     }
 
     try {
-      const days = eachDayOfInterval({ start: range.from, end: range.to });
-      const blockedDay = days.find((day) => isDateUnavailable(day));
+      // ✅ Filet de sécurité final : nuits (hors checkout) + checkout via departureBlocked
+      const nights = eachDayOfInterval({ start: range.from, end: range.to }).slice(0, -1);
+      let blockedDay = nights.find((day) => isDateUnavailable(day));
+      if (!blockedDay && isDateDepartureBlocked(range.to)) {
+        blockedDay = range.to;
+      }
       if (blockedDay) {
         const { title, message } = getUnavailableMessage(blockedDay);
         setModalStatus({ isOpen: true, type: "warning", title, message });
@@ -417,8 +462,8 @@ function Booking() {
     }
   };
 
-  // ── Dates désactivées pour DayPicker ─────────────────────────────────────
-  const disabledDays = [{ before: today }, ...unavailableDates];
+  // ✅ MODIFIÉ : matcher fonction au lieu d'un simple tableau de dates
+  const disabledDays = isDisabledDay;
 
   const modifiersUnavailable = useMemo(
     () => ({ unavailable: unavailableDates }),
@@ -608,6 +653,10 @@ function Booking() {
                     {lang === "fr" ? "Indisponible" : "Unavailable"}
                   </span>
                   <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-amber-900/40 border border-amber-700 inline-block" />
+                    {lang === "fr" ? "Départ uniquement" : "Departure only"}
+                  </span>
+                  <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 border border-neutral-600 inline-block" />
                     {lang === "fr" ? "Disponible" : "Available"}
                   </span>
@@ -633,9 +682,6 @@ function Booking() {
 
                 {/* CSS du calendrier dark */}
                 <style>{`
-  /* ══════════════════════════════════════════
-     VARIABLES — sur .rdp-root (v9)
-  ══════════════════════════════════════════ */
   .rdp-root {
     --rdp-day-height: clamp(36px, 12vw, 44px);
     --rdp-day-width: clamp(36px, 12vw, 44px);
@@ -657,10 +703,6 @@ function Booking() {
     --rdp-today-color: #fff;
     color: white;
   }
-
-  /* ══════════════════════════════════════════
-     FIX PRINCIPAL — layout mois
-  ══════════════════════════════════════════ */
   .rdp-months {
     max-width: 100% !important;
     width: 100% !important;
@@ -670,13 +712,9 @@ function Booking() {
     flex-wrap: nowrap !important;
     box-sizing: border-box !important;
   }
-
   @media (min-width: 640px) {
-    .rdp-months {
-      flex-direction: row !important;
-    }
+    .rdp-months { flex-direction: row !important; }
   }
-
   .rdp-month {
     flex: 1 1 0% !important;
     min-width: 0 !important;
@@ -684,10 +722,6 @@ function Booking() {
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
-
-  /* ══════════════════════════════════════════
-     GRILLE
-  ══════════════════════════════════════════ */
   .rdp-month_grid {
     width: 100% !important;
     table-layout: fixed !important;
@@ -695,10 +729,6 @@ function Booking() {
     border-spacing: 2px !important;
     box-sizing: border-box !important;
   }
-
-  /* ══════════════════════════════════════════
-     CELLULES JOURS
-  ══════════════════════════════════════════ */
   .rdp-day {
     width: auto !important;
     height: clamp(36px, 12vw, 44px) !important;
@@ -707,10 +737,6 @@ function Booking() {
     box-sizing: border-box !important;
     overflow: hidden !important;
   }
-
-  /* ══════════════════════════════════════════
-     BOUTON JOUR
-  ══════════════════════════════════════════ */
   .rdp-day_button {
     width: 100% !important;
     height: 100% !important;
@@ -722,10 +748,6 @@ function Booking() {
     margin: 0 !important;
     box-sizing: border-box !important;
   }
-
-  /* ══════════════════════════════════════════
-     HEADER JOURS SEMAINE
-  ══════════════════════════════════════════ */
   .rdp-weekday {
     text-transform: uppercase !important;
     font-size: 0.65rem !important;
@@ -734,10 +756,6 @@ function Booking() {
     padding: 0 0 8px 0 !important;
     box-sizing: border-box !important;
   }
-
-  /* ══════════════════════════════════════════
-     CAPTION
-  ══════════════════════════════════════════ */
   .rdp-caption_label {
     font-size: 0.7rem !important;
     font-weight: 700 !important;
@@ -745,26 +763,11 @@ function Booking() {
     letter-spacing: 0.15em !important;
     color: #a3a3a3 !important;
   }
-
-  /* ══════════════════════════════════════════
-     NAVIGATION
-  ══════════════════════════════════════════ */
   .rdp-button_previous,
-  .rdp-button_next {
-    color: #737373 !important;
-  }
+  .rdp-button_next { color: #737373 !important; }
   .rdp-button_previous:hover,
-  .rdp-button_next:hover {
-    background: #262626 !important;
-    color: #fff !important;
-  }
-  .rdp-chevron {
-    fill: #737373 !important;
-  }
-
-  /* ══════════════════════════════════════════
-     RANGE MIDDLE
-  ══════════════════════════════════════════ */
+  .rdp-button_next:hover { background: #262626 !important; color: #fff !important; }
+  .rdp-chevron { fill: #737373 !important; }
   .rdp-range_middle {
     background-color: #1c1c1c !important;
     padding: 0 !important;
@@ -778,10 +781,6 @@ function Booking() {
     width: 100% !important;
     height: 100% !important;
   }
-
-  /* ══════════════════════════════════════════
-     RANGE START / END
-  ══════════════════════════════════════════ */
   .rdp-range_start,
   .rdp-range_end {
     padding: 0 !important;
@@ -796,23 +795,13 @@ function Booking() {
     width: 100% !important;
     height: 100% !important;
   }
-
-  /* ══════════════════════════════════════════
-     RANGE START/END — demi-fond
-  ══════════════════════════════════════════ */
   .rdp-range_start {
     background: linear-gradient(90deg, transparent 50%, #1c1c1c 50%) !important;
   }
   .rdp-range_end {
     background: linear-gradient(90deg, #1c1c1c 50%, transparent 50%) !important;
   }
-  .rdp-range_start.rdp-range_end {
-    background: transparent !important;
-  }
-
-  /* ══════════════════════════════════════════
-     INDISPONIBLE DANS RANGE
-  ══════════════════════════════════════════ */
+  .rdp-range_start.rdp-range_end { background: transparent !important; }
   .rdp-range_middle[data-unavailable] .rdp-day_button {
     background: rgba(136, 19, 55, 0.25) !important;
     cursor: not-allowed !important;
@@ -850,19 +839,30 @@ function Booking() {
                         }
 
                         const dateStr = format(targetDate, "yyyy-MM-dd");
-                        const todayStr = format(today, "yyyy-MM-dd");
 
                         const isPast = dateStr < todayStr;
-                        const isUnavail = isDateUnavailable(targetDate);
-                        const datePrice = getPriceForDate(targetDate);
-                        const isCustom = customPrices[dateStr] !== undefined;
-                        const isEdge = modifiers.range_start || modifiers.range_end;
-                        const isMid = modifiers.range_middle;
-                        const isDisabled = isPast || isUnavail;
+                        const arrivalBlocked = isDateUnavailable(targetDate);
+                        const departBlocked = isDateDepartureBlocked(targetDate);
+                        // ✅ Totalement bloqué : ni arrivée ni départ possibles
+                        const fullyBlocked = arrivalBlocked && departBlocked;
+                        // ✅ Départ uniquement (comme le 11 juillet sur Airbnb)
+                        const departureOnly = arrivalBlocked && !departBlocked;
 
                         const rangeFromStr = range?.from
                           ? format(range.from, "yyyy-MM-dd")
                           : null;
+                        const canBeCheckoutNow =
+                          !!rangeFromStr && !range?.to && dateStr > rangeFromStr;
+
+                        const datePrice = getPriceForDate(targetDate);
+                        const isCustom = customPrices[dateStr] !== undefined;
+                        const isEdge = modifiers.range_start || modifiers.range_end;
+                        const isMid = modifiers.range_middle;
+
+                        // Le matcher `disabled` passé au DayPicker est la source
+                        // de vérité pour l'état réellement cliquable ou non.
+                        const isDisabled = isPast || buttonProps.disabled;
+
                         let isAfterBlockInRange = false;
                         if (rangeFromStr && !range?.to && dateStr > rangeFromStr) {
                           try {
@@ -881,41 +881,47 @@ function Booking() {
                           }
                         }
 
+                        // ── Détermination de la classe visuelle ──
+                        let stateClass = "";
+                        if (isPast) {
+                          stateClass = "opacity-25 cursor-default pointer-events-none border border-transparent";
+                        } else if (fullyBlocked) {
+                          stateClass = "bg-rose-950/30 border border-rose-800/40 cursor-not-allowed pointer-events-none";
+                        } else if (departureOnly) {
+                          stateClass = canBeCheckoutNow
+                            ? "bg-amber-950/20 border border-amber-700/40 cursor-pointer hover:bg-amber-900/30"
+                            : "bg-neutral-900/40 border border-neutral-800 opacity-60 cursor-not-allowed pointer-events-none";
+                        } else if (isAfterBlockInRange && !isEdge && !isMid) {
+                          stateClass = "opacity-40 cursor-not-allowed border border-rose-900/30";
+                        } else if (!isEdge && !isMid) {
+                          stateClass = "border border-neutral-800 hover:border-neutral-500 hover:bg-neutral-900";
+                        }
+
+                        let titleAttr: string | undefined;
+                        if (fullyBlocked) {
+                          titleAttr = lang === "fr" ? "Date non disponible" : "Date unavailable";
+                        } else if (departureOnly && !canBeCheckoutNow) {
+                          titleAttr = lang === "fr" ? "Date de départ uniquement" : "Departure date only";
+                        } else if (isAfterBlockInRange) {
+                          titleAttr = lang === "fr"
+                            ? "Une date bloquée est dans cet intervalle"
+                            : "A blocked date is within this range";
+                        }
+
                         return (
                           <button
                             {...buttonProps}
-                            disabled={isDisabled || buttonProps.disabled}
+                            disabled={isDisabled}
                             style={{ borderRadius: 0 }}
-                            data-unavailable={isUnavail ? "true" : undefined}
-                            title={
-                              isUnavail
-                                ? lang === "fr"
-                                  ? "Date non disponible"
-                                  : "Date unavailable"
-                                : isAfterBlockInRange
-                                ? lang === "fr"
-                                  ? "Une date bloquée est dans cet intervalle"
-                                  : "A blocked date is within this range"
-                                : undefined
-                            }
+                            data-unavailable={fullyBlocked ? "true" : undefined}
+                            title={titleAttr}
                             className={[
                               "rdp-day_button w-full flex flex-col items-center justify-center gap-0.5 relative transition-all",
-                              isPast
-                                ? "opacity-25 cursor-default pointer-events-none border border-transparent"
-                                : "",
-                              !isPast && isUnavail
-                                ? "bg-rose-950/30 border border-rose-800/40 cursor-not-allowed pointer-events-none"
-                                : "",
-                              !isPast && !isUnavail && isAfterBlockInRange
-                                ? "opacity-40 cursor-not-allowed border border-rose-900/30"
-                                : "",
-                              !isPast && !isUnavail && !isEdge && !isMid && !isAfterBlockInRange
-                                ? "border border-neutral-800 hover:border-neutral-500 hover:bg-neutral-900"
-                                : "",
+                              stateClass,
                             ].join(" ")}
                           >
-                            {/* Croix sur indispo */}
-                            {!isPast && isUnavail && (
+                            {/* Croix uniquement sur les dates TOTALEMENT bloquées */}
+                            {!isPast && fullyBlocked && (
                               <span
                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                 aria-hidden
@@ -931,8 +937,10 @@ function Booking() {
                                 "text-xs font-semibold leading-none z-10",
                                 isPast
                                   ? "text-neutral-600 line-through"
-                                  : isUnavail
+                                  : fullyBlocked
                                   ? "text-rose-700"
+                                  : departureOnly
+                                  ? (canBeCheckoutNow ? "text-amber-400" : "text-neutral-500")
                                   : isEdge
                                   ? "text-black"
                                   : "text-white",
@@ -941,8 +949,8 @@ function Booking() {
                               {targetDate.getDate()}
                             </span>
 
-                            {/* Prix */}
-                            {!isPast && !isUnavail && (
+                            {/* Prix (masqué si totalement bloqué ou départ non-cliquable) */}
+                            {!isPast && !fullyBlocked && !(departureOnly && !canBeCheckoutNow) && (
                               <span
                                 className={[
                                   "text-[8px] font-mono leading-none z-10",
@@ -950,6 +958,8 @@ function Booking() {
                                     ? "text-black/60 font-bold"
                                     : isMid
                                     ? "text-neutral-500"
+                                    : departureOnly
+                                    ? "text-amber-500"
                                     : isCustom
                                     ? "text-amber-400 font-bold"
                                     : "text-neutral-600",
@@ -1129,14 +1139,12 @@ function Booking() {
                         )}
                       </div>
 
-                      {/* Feedback erreur */}
                       {promoError && (
                         <p className="text-xs text-rose-400 flex items-center gap-1.5">
                           <X className="h-3.5 w-3.5 shrink-0" /> {promoError}
                         </p>
                       )}
 
-                      {/* Feedback succès */}
                       {promoApplied && promoResult && (
                         <p className="text-xs text-emerald-400 flex items-center gap-1.5">
                           <Check className="h-3.5 w-3.5 shrink-0" />
@@ -1179,8 +1187,8 @@ function Booking() {
                 <p className="text-sm text-neutral-400 mb-10 leading-relaxed max-w-xl">
                   {t.booking.airbnbLongDesc}
                 </p>
-                <a
-                  href={AIRBNB_URL}
+                
+                 <a href={AIRBNB_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-4 bg-[#FF5A5F] text-white font-bold px-10 py-5 text-xs tracking-[0.25em] uppercase hover:bg-[#e04f54] transition-all duration-300 shadow-xl shadow-[#FF5A5F]/20 hover:scale-[1.03]"
@@ -1202,7 +1210,6 @@ function Booking() {
                   {lang === "fr" ? "Détail de votre tarification" : "Your pricing breakdown"}
                 </div>
 
-                {/* Détail nuits */}
                 <div className="max-h-44 overflow-y-auto space-y-2 pr-1 text-xs text-neutral-400">
                   {priceBreakdowns.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center">
@@ -1217,7 +1224,6 @@ function Booking() {
                   ))}
                 </div>
 
-                {/* Sous-total */}
                 <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
                   <span className="text-xs text-neutral-400">
                     {lang === "fr" ? "Sous-total" : "Subtotal"} ({totalNights}{" "}
@@ -1234,7 +1240,6 @@ function Booking() {
                   </span>
                 </div>
 
-                {/* Ligne réduction */}
                 {promoResult && (
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs text-emerald-400 flex items-center gap-1.5">
@@ -1247,7 +1252,6 @@ function Booking() {
                   </div>
                 )}
 
-                {/* Total final avec promo */}
                 {promoResult ? (
                   <div className="bg-emerald-950/25 border border-emerald-800/30 px-4 py-3 flex justify-between items-baseline -mx-1">
                     <span className="text-xs text-white font-bold uppercase tracking-wider">
@@ -1258,7 +1262,6 @@ function Booking() {
                     </span>
                   </div>
                 ) : (
-                  /* Total sans promo */
                   <div className="border-t border-neutral-800 pt-3 flex justify-between items-baseline">
                     <span className="text-xs text-neutral-300">
                       Total ({totalNights}{" "}

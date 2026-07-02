@@ -4,20 +4,27 @@ import { EmailService } from '../services/emailService';
 import { Op } from 'sequelize';
 import { Reservation as ReservationModel } from '../models/Reservation';
 import { ManualBlock } from '../models/ManualBlock';
+import { AirbnbBlock } from '../models/AirbnbBlock';
+import { AirbnbSyncService } from '../services/airbnbSyncService';
 
 export class AvailabilityController {
   private reservationService: ReservationService;
   private emailService: EmailService;
+  private airbnbSyncService: AirbnbSyncService;
 
   constructor() {
     this.reservationService = new ReservationService();
     this.emailService = new EmailService();
+    this.airbnbSyncService = new AirbnbSyncService();
+
     this.getMonthCalendar = this.getMonthCalendar.bind(this);
     this.checkDateRange = this.checkDateRange.bind(this);
     this.calculatePrice = this.calculatePrice.bind(this);
     this.getReservedDates = this.getReservedDates.bind(this);
     this.getManualBlocks = this.getManualBlocks.bind(this);
     this.toggleBlock = this.toggleBlock.bind(this);
+    this.getAirbnbBlocks = this.getAirbnbBlocks.bind(this);
+    this.triggerAirbnbSync = this.triggerAirbnbSync.bind(this);
   }
 
   async getMonthCalendar(req: Request, res: Response) {
@@ -120,7 +127,6 @@ export class AvailabilityController {
       }
 
       if (available === false) {
-        // BLOQUER
         const [block, created] = await ManualBlock.findOrCreate({
           where: { date },
           defaults: {
@@ -141,7 +147,6 @@ export class AvailabilityController {
         });
 
       } else {
-        // DÉBLOQUER
         const deleted = await ManualBlock.destroy({ where: { date } });
         if (deleted === 0) {
           return res.status(404).json({ success: false, error: 'Blocage non trouvé pour cette date' });
@@ -154,33 +159,90 @@ export class AvailabilityController {
     }
   }
 
+  async getAirbnbBlocks(req: Request, res: Response) {
+    try {
+      const blocks = await AirbnbBlock.findAll({
+        order: [['startDate', 'ASC']],
+        raw: true,
+      });
+      return res.json({ success: true, data: blocks });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async triggerAirbnbSync(req: Request, res: Response) {
+    try {
+      const result = await this.airbnbSyncService.sync();
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ✅ MODIFIÉ : ajout de arrivalBlocked (=!available) / departureBlocked
+  //    pour gérer les "jours de transition" (turnover days) comme Airbnb :
+  //    un jour peut être disponible en DÉPART uniquement, ou en ARRIVÉE
+  //    uniquement, sans être totalement bloqué.
+  // ─────────────────────────────────────────────────────────────
   private async generateCalendar(year: number, month: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    // 1. Réservations clients
+    // On étend la requête d'un jour AVANT le mois affiché : nécessaire pour
+    // calculer correctement departureBlocked sur le 1er jour du mois
+    // (qui dépend de la nuit de la veille, potentiellement dans le mois précédent).
+    const queryStart = new Date(startDate);
+    queryStart.setDate(queryStart.getDate() - 1);
+    const queryStartStr = this.formatLocalDate(queryStart);
+
+    const startStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+    // 1. Réservations clients (site direct) — plage étendue
     const reservations = await ReservationModel.findAll({
       where: {
         status: { [Op.in]: ['pending', 'confirmed'] },
         checkInDate: { [Op.lte]: endDate },
-        checkOutDate: { [Op.gte]: startDate },
+        checkOutDate: { [Op.gte]: queryStart },
       },
       attributes: ['checkInDate', 'checkOutDate'],
       raw: true,
     });
 
-    // 2. Blocages manuels du mois
-    const startStr = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+    // 2. Blocages manuels — plage étendue
     const manualBlocks = await ManualBlock.findAll({
-      where: { date: { [Op.between]: [startStr, endStr] } },
+      where: { date: { [Op.between]: [queryStartStr, endStr] } },
+      raw: true,
+    });
+
+    // 3. Blocages Airbnb (iCal) — plage étendue
+    const airbnbBlocks = await AirbnbBlock.findAll({
+      where: {
+        startDate: { [Op.lte]: endStr },
+        endDate: { [Op.gte]: queryStartStr },
+      },
       raw: true,
     });
 
     const occupiedSet = new Set(this.extractOccupiedDates(reservations as any));
     const blockedSet = new Set(manualBlocks.map((b: any) => b.date));
+    const airbnbSet = new Set(
+      this.extractOccupiedDates(
+        (airbnbBlocks as any[]).map((b: any) => ({
+          checkInDate: b.startDate,
+          checkOutDate: b.endDate,
+        }))
+      )
+    );
 
-    // 3. Générer les jours du mois
+    // Union de toutes les nuits occupées, toutes sources confondues —
+    // sert de base au calcul arrivée/départ (le motif du blocage n'a pas
+    // d'importance pour la logique de transition).
+    const occupiedNights = new Set<string>([...occupiedSet, ...blockedSet, ...airbnbSet]);
+
+    // 4. Générer les jours du mois
     const daysInMonth = endDate.getDate();
     const calendar = [];
 
@@ -188,12 +250,31 @@ export class AvailabilityController {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const dateObj = new Date(year, month - 1, day);
 
+      const isOccupied = occupiedSet.has(dateStr);
+      const isManuallyBlocked = blockedSet.has(dateStr);
+      const isAirbnbBlocked = airbnbSet.has(dateStr);
+
+      let source: 'website' | 'manual' | 'airbnb' | null = null;
+      if (isAirbnbBlocked) source = 'airbnb';
+      else if (isOccupied) source = 'website';
+      else if (isManuallyBlocked) source = 'manual';
+
+      // arrivalBlocked  : la nuit de CE jour est occupée → impossible d'arriver ce jour
+      // departureBlocked: la nuit de la VEILLE est occupée → impossible de partir ce jour
+      const prevDateObj = new Date(year, month - 1, day - 1);
+      const prevDateStr = this.formatLocalDate(prevDateObj);
+
+      const arrivalBlocked = occupiedNights.has(dateStr);
+      const departureBlocked = occupiedNights.has(prevDateStr);
+
       calendar.push({
         date: dateStr,
         day,
         month,
         year,
-        available: !occupiedSet.has(dateStr) && !blockedSet.has(dateStr),
+        available: !arrivalBlocked, // ✅ inchangé : reflète toujours la possibilité d'ARRIVER
+        departureBlocked,           // ✅ nouveau champ
+        source,
         dayOfWeek: dateObj.getDay(),
         dayName: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][dateObj.getDay()],
       });
@@ -208,10 +289,17 @@ export class AvailabilityController {
       let current = new Date(res.checkInDate);
       const end = new Date(res.checkOutDate);
       while (current < end) {
-        dates.add(current.toISOString().split('T')[0]);
+        dates.add(this.formatLocalDate(current));
         current.setDate(current.getDate() + 1);
       }
     });
     return Array.from(dates);
+  }
+
+  private formatLocalDate(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

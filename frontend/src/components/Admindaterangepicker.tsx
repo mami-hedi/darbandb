@@ -1,10 +1,10 @@
-// ─── AdminDateRangePicker.tsx ─────────────────────────────────────────────────
+// ─── AdminDateRangePicker.tsx — v2 avec gestion des jours de transition ──────
 // Calendrier identique à booking.tsx : dates indispo rouge + croix,
-// tarifs jour par jour, navigation 2 mois, validation range en temps réel.
-// Usage : remplace les deux <input type="date"> dans ReservationModal.
+// tarifs jour par jour, navigation 2 mois, validation range en temps réel,
+// + gestion "date de départ uniquement" / "date d'arrivée uniquement".
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { DayPicker, DateRange, DayButtonProps } from "react-day-picker";
 import { fr } from "date-fns/locale";
 import {
@@ -32,6 +32,7 @@ interface Props {
 
 export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
   const today = startOfToday();
+  const todayStr = format(today, "yyyy-MM-dd");
 
   // ── Tarification ──────────────────────────────────────────────────────────
   const [basePrice, setBasePrice] = useState<number>(150);
@@ -40,6 +41,8 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
 
   // ── Disponibilités ────────────────────────────────────────────────────────
   const [unavailableDates, setUnavailableDates] = useState<Date[]>([]);
+  // ✅ NOUVEAU : dates où le DÉPART est impossible (nuit de la veille occupée)
+  const [departureBlockedDates, setDepartureBlockedDates] = useState<Date[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
 
   // ── Mois affiché ──────────────────────────────────────────────────────────
@@ -84,10 +87,18 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
       ]);
       const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
       const allDays = [...(d1.data || []), ...(d2.data || [])];
+
       const unavailable = allDays
         .filter((d: { available: boolean }) => !d.available)
         .map((d: { date: string }) => new Date(d.date + "T00:00:00"));
+
+      // ✅ NOUVEAU : dates où le départ est bloqué
+      const departBlocked = allDays
+        .filter((d: any) => d.departureBlocked)
+        .map((d: { date: string }) => new Date(d.date + "T00:00:00"));
+
       setUnavailableDates(unavailable);
+      setDepartureBlockedDates(departBlocked);
     } catch { /* silencieux */ }
     finally { setLoadingAvail(false); }
   }, []);
@@ -111,9 +122,21 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
     [unavailableDates]
   );
 
+  // ✅ NOUVEAU
+  const departureBlockedSet = useMemo(
+    () => new Set(departureBlockedDates.map((d) => format(d, "yyyy-MM-dd"))),
+    [departureBlockedDates]
+  );
+
   const isDateUnavailable = useCallback(
     (date: Date) => unavailableDateSet.has(format(date, "yyyy-MM-dd")),
     [unavailableDateSet]
+  );
+
+  // ✅ NOUVEAU
+  const isDateDepartureBlocked = useCallback(
+    (date: Date) => departureBlockedSet.has(format(date, "yyyy-MM-dd")),
+    [departureBlockedSet]
   );
 
   // ── Propagation vers le parent ────────────────────────────────────────────
@@ -124,6 +147,26 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
       onChange(cin, cout);
     },
     [onChange]
+  );
+
+  // ✅ NOUVEAU : matcher `disabled` du DayPicker — mêmes règles que booking.tsx
+  const isDisabledDay = useCallback(
+    (date: Date): boolean => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      if (dateStr < todayStr) return true;
+
+      const arrivalBlocked = isDateUnavailable(date);
+      const departBlocked = isDateDepartureBlocked(date);
+
+      const hasOpenCheckIn = !!range?.from && !range?.to;
+      if (hasOpenCheckIn && dateStr > format(range!.from!, "yyyy-MM-dd")) {
+        // Candidat DÉPART → seule departBlocked compte
+        return departBlocked;
+      }
+      // Candidat ARRIVÉE (ou reset) → seule arrivalBlocked compte
+      return arrivalBlocked;
+    },
+    [range, isDateUnavailable, isDateDepartureBlocked, todayStr]
   );
 
   // ── Sélection avec validation ─────────────────────────────────────────────
@@ -143,8 +186,14 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
       if (newRange.from && newRange.to) {
         let blockedDay: Date | undefined;
         try {
-          const days = eachDayOfInterval({ start: newRange.from, end: newRange.to });
-          blockedDay = days.find((d) => isDateUnavailable(d));
+          // ✅ On exclut le dernier jour (checkout) — c'est un DÉPART, pas une nuit
+          const nights = eachDayOfInterval({ start: newRange.from, end: newRange.to }).slice(0, -1);
+          blockedDay = nights.find((d) => isDateUnavailable(d));
+
+          // ✅ Le checkout est vérifié séparément, via departureBlocked
+          if (!blockedDay && isDateDepartureBlocked(newRange.to)) {
+            blockedDay = newRange.to;
+          }
         } catch { /* ignore */ }
 
         if (blockedDay) {
@@ -158,10 +207,10 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
       setRange(newRange);
       emit(newRange);
     },
-    [isDateUnavailable, emit]
+    [isDateUnavailable, isDateDepartureBlocked, emit]
   );
 
-  const disabledDays = [{ before: today }, ...unavailableDates];
+  const disabledDays = isDisabledDay; // ✅ MODIFIÉ : matcher fonction
   const modifiersUnavailable = useMemo(() => ({ unavailable: unavailableDates }), [unavailableDates]);
 
   const loading = loadingPrices || loadingAvail;
@@ -262,17 +311,25 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
               if (!targetDate || isNaN(targetDate.getTime())) return <button {...buttonProps} />;
 
               const dateStr    = format(targetDate, "yyyy-MM-dd");
-              const todayStr   = format(today, "yyyy-MM-dd");
               const isPast     = dateStr < todayStr;
-              const isUnavail  = isDateUnavailable(targetDate);
+              const arrivalBlocked = isDateUnavailable(targetDate);
+              const departBlocked  = isDateDepartureBlocked(targetDate);
+              // ✅ Totalement bloqué : ni arrivée ni départ possibles
+              const fullyBlocked = arrivalBlocked && departBlocked;
+              // ✅ Départ uniquement
+              const departureOnly = arrivalBlocked && !departBlocked;
+
               const datePrice  = getPriceForDate(targetDate);
               const isCustom   = customPrices[dateStr] !== undefined;
               const isEdge     = modifiers.range_start || modifiers.range_end;
               const isMid      = modifiers.range_middle;
-              const isDisabled = isPast || isUnavail;
 
-              // Jour disponible mais après une date bloquée dans le hover du range
+              // La source de vérité pour l'état cliquable est `disabled` (passé par le DayPicker)
+              const isDisabled = isPast || buttonProps.disabled;
+
               const rangeFromStr = range?.from ? format(range.from, "yyyy-MM-dd") : null;
+              const canBeCheckoutNow = !!rangeFromStr && !range?.to && dateStr > rangeFromStr;
+
               let isAfterBlockInRange = false;
               if (rangeFromStr && !range?.to && dateStr > rangeFromStr) {
                 try {
@@ -286,37 +343,45 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
                 } catch { /* ignore */ }
               }
 
+              // ── Classe visuelle ──
+              let stateClass = "";
+              if (isPast) {
+                stateClass = "opacity-25 cursor-default pointer-events-none border border-transparent";
+              } else if (fullyBlocked) {
+                stateClass = "bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800/40 cursor-not-allowed pointer-events-none";
+              } else if (departureOnly) {
+                stateClass = canBeCheckoutNow
+                  ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/40 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  : "bg-muted/50 border border-border opacity-60 cursor-not-allowed pointer-events-none";
+              } else if (isAfterBlockInRange && !isEdge && !isMid) {
+                stateClass = "opacity-40 cursor-not-allowed border border-rose-200 dark:border-rose-900/30";
+              } else if (!isEdge && !isMid) {
+                stateClass = "border border-border hover:border-primary/40 hover:bg-primary/5";
+              }
+
+              let titleAttr: string | undefined;
+              if (fullyBlocked) {
+                titleAttr = "Date non disponible";
+              } else if (departureOnly && !canBeCheckoutNow) {
+                titleAttr = "Date de départ uniquement";
+              } else if (isAfterBlockInRange) {
+                titleAttr = "Une date bloquée est dans cet intervalle";
+              }
+
               return (
                 <button
                   {...buttonProps}
-                  disabled={isDisabled || buttonProps.disabled}
+                  disabled={isDisabled}
                   style={{ height: "48px", borderRadius: 4 }}
-                  data-unavailable={isUnavail ? "true" : undefined}
-                  title={
-                    isUnavail
-                      ? "Date non disponible"
-                      : isAfterBlockInRange
-                      ? "Une date bloquée est dans cet intervalle"
-                      : undefined
-                  }
+                  data-unavailable={fullyBlocked ? "true" : undefined}
+                  title={titleAttr}
                   className={[
                     "rdp-day_button w-full flex flex-col items-center justify-center gap-0.5 relative transition-all",
-                    isPast
-                      ? "opacity-25 cursor-default pointer-events-none border border-transparent"
-                      : "",
-                    !isPast && isUnavail
-                      ? "bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800/40 cursor-not-allowed pointer-events-none"
-                      : "",
-                    !isPast && !isUnavail && isAfterBlockInRange
-                      ? "opacity-40 cursor-not-allowed border border-rose-200 dark:border-rose-900/30"
-                      : "",
-                    !isPast && !isUnavail && !isEdge && !isMid && !isAfterBlockInRange
-                      ? "border border-border hover:border-primary/40 hover:bg-primary/5"
-                      : "",
+                    stateClass,
                   ].join(" ")}
                 >
-                  {/* Croix sur indispo */}
-                  {!isPast && isUnavail && (
+                  {/* Croix uniquement sur les dates TOTALEMENT bloquées */}
+                  {!isPast && fullyBlocked && (
                     <span className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
                       <span className="absolute w-3.5 h-[1.5px] bg-rose-400 dark:bg-rose-600 rotate-45" />
                       <span className="absolute w-3.5 h-[1.5px] bg-rose-400 dark:bg-rose-600 -rotate-45" />
@@ -326,21 +391,23 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
                   {/* Numéro du jour */}
                   <span className={[
                     "text-xs font-semibold leading-none z-10",
-                    isPast    ? "text-muted-foreground line-through"
-                    : isUnavail ? "text-rose-400 dark:text-rose-600"
-                    : isEdge    ? "text-primary-foreground"
+                    isPast       ? "text-muted-foreground line-through"
+                    : fullyBlocked ? "text-rose-400 dark:text-rose-600"
+                    : departureOnly ? (canBeCheckoutNow ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")
+                    : isEdge       ? "text-primary-foreground"
                     : "text-foreground",
                   ].join(" ")}>
                     {targetDate.getDate()}
                   </span>
 
-                  {/* Prix */}
-                  {!isPast && !isUnavail && (
+                  {/* Prix (masqué si totalement bloqué ou départ non-cliquable) */}
+                  {!isPast && !fullyBlocked && !(departureOnly && !canBeCheckoutNow) && (
                     <span className={[
                       "text-[9px] font-mono leading-none z-10",
-                      isEdge  ? "text-primary-foreground/70 font-bold"
-                      : isMid   ? "text-muted-foreground"
-                      : isCustom ? "text-amber-500 dark:text-amber-400 font-bold"
+                      isEdge      ? "text-primary-foreground/70 font-bold"
+                      : isMid       ? "text-muted-foreground"
+                      : departureOnly ? "text-amber-600 dark:text-amber-400"
+                      : isCustom    ? "text-amber-500 dark:text-amber-400 font-bold"
                       : "text-muted-foreground",
                     ].join(" ")}>
                       {datePrice} DT
@@ -362,6 +429,10 @@ export function AdminDateRangePicker({ checkIn, checkOut, onChange }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-rose-100 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800 inline-block" />
           Indisponible
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 inline-block" />
+          Départ uniquement
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm border border-border inline-block" />

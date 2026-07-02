@@ -45,43 +45,47 @@ export const Route = createFileRoute("/gallery")({
   component: Gallery,
 });
 
-type Item = { src: string; alt: string; type: "image" | "video"; ratio: string };
+// NOTE : le libellé (alt / légende) n'est plus stocké ici en dur.
+// Il est désormais traduit dynamiquement via t.gallery.items[i] (voir dict.ts),
+// dans le MÊME ORDRE que ce tableau, afin de s'afficher en FR ou EN selon la langue active.
+type Item = { src: string; type: "image" | "video"; ratio: string };
 
-// Tableau trié : Ratios identiques regroupés pour s'aligner côte à côte sans briser la grille
 const items: Item[] = [
-  // Bloc 1 : Les Carrés (1/1) - S'alignent harmonieusement ensemble
-  { src: g3, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g6, alt: "Cuisine Équipée", type: "image", ratio: "aspect-[4/3]" },
-  { src: g5, alt: "Escalier", type: "image", ratio: "aspect-[4/3]" },
-  
-  { src: g18, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
-  { src: g9, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g15, alt: "Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  
-  { src: g17, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
-  { src: g2, alt: "Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g7, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
+  { src: g3, type: "image", ratio: "aspect-[4/3]" },
+  { src: g6, type: "image", ratio: "aspect-[4/3]" },
+  { src: g5, type: "image", ratio: "aspect-[4/3]" },
 
-  { src: g8, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g10, alt: "Piscine & Terrasse", type: "image", ratio: "aspect-[4/3]" },
-  { src: g11, alt: "Salon", type: "image", ratio: "aspect-[4/3]" },
+  { src: g18, type: "image", ratio: "aspect-[4/3]" },
+  { src: g9, type: "image", ratio: "aspect-[4/3]" },
+  { src: g15, type: "image", ratio: "aspect-[4/3]" },
 
-  { src: g13, alt: "Salle de Bain", type: "image", ratio: "aspect-[4/3]" },
-  { src: g14, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
-  { src: g1, alt: "Cuisine & salon", type: "image", ratio: "aspect-[4/3]" },
+  { src: g17, type: "image", ratio: "aspect-[4/3]" },
+  { src: g2, type: "image", ratio: "aspect-[4/3]" },
+  { src: g7, type: "image", ratio: "aspect-[4/3]" },
 
-  { src: g19, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
-  { src: g4, alt: "Détails & Matières", type: "image", ratio: "aspect-[4/3]" },
-  { src: g20, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g8, type: "image", ratio: "aspect-[4/3]" },
+  { src: g10, type: "image", ratio: "aspect-[4/3]" },
+  { src: g11, type: "image", ratio: "aspect-[4/3]" },
 
-  { src: g21, alt: "Cuisine Équipée", type: "image", ratio: "aspect-[4/3]" },
-  { src: g22, alt: "Dressing", type: "image", ratio: "aspect-[4/3]" },
-  { src: g23, alt: "Suite", type: "image", ratio: "aspect-[4/3]" },
+  { src: g13, type: "image", ratio: "aspect-[4/3]" },
+  { src: g14, type: "image", ratio: "aspect-[4/3]" },
+  { src: g1, type: "image", ratio: "aspect-[4/3]" },
+
+  { src: g19, type: "image", ratio: "aspect-[4/3]" },
+  { src: g4, type: "image", ratio: "aspect-[4/3]" },
+  { src: g20, type: "image", ratio: "aspect-[4/3]" },
+
+  { src: g21, type: "image", ratio: "aspect-[4/3]" },
+  { src: g22, type: "image", ratio: "aspect-[4/3]" },
+  { src: g23, type: "image", ratio: "aspect-[4/3]" },
 ];
 
 function Gallery() {
   const { t } = useLang();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  // Légendes traduites, dans le même ordre que le tableau `items` ci-dessus.
+  const alts: readonly string[] = t.gallery.items;
 
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -109,6 +113,7 @@ function Gallery() {
   }, [activeIndex]);
 
   const currentItem = activeIndex !== null ? items[activeIndex] : null;
+  const currentAlt = activeIndex !== null ? alts[activeIndex] : "";
 
   return (
     <SiteLayout>
@@ -139,7 +144,7 @@ function Gallery() {
               >
                 <img 
                   src={it.src} 
-                  alt={it.alt} 
+                  alt={alts[i]} 
                   loading="lazy" 
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] opacity-85 group-hover:opacity-100" 
                 />
@@ -157,7 +162,7 @@ function Gallery() {
                 
                 {/* Légende au survol */}
                 <span className="absolute bottom-4 left-4 text-[10px] uppercase tracking-[0.2em] font-semibold text-white translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                  {it.alt}
+                  {alts[i]}
                 </span>
               </button>
             ))}
@@ -191,12 +196,12 @@ function Gallery() {
               {currentItem.type === "video" ? (
                 <video src={currentItem.src} controls autoPlay className="max-h-[80vh] max-w-full shadow-2xl border border-neutral-900 object-contain" />
               ) : (
-                <img src={currentItem.src} alt={currentItem.alt} className="max-h-[80vh] max-w-full shadow-2xl border border-neutral-900 object-contain pointer-events-none" />
+                <img src={currentItem.src} alt={currentAlt} className="max-h-[80vh] max-w-full shadow-2xl border border-neutral-900 object-contain pointer-events-none" />
               )}
               
               {/* Informations Médias de la Lightbox */}
               <div className="mt-4 text-center text-[10px] tracking-[0.2em] uppercase text-neutral-400">
-                <span className="text-white font-medium">{currentItem.alt}</span> — {activeIndex + 1} / {items.length}
+                <span className="text-white font-medium">{currentAlt}</span> — {activeIndex + 1} / {items.length}
               </div>
             </div>
 

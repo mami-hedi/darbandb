@@ -13,15 +13,16 @@ import { initAdminModel, Admin } from './models/Admin';
 import { initCustomPriceModel } from './models/CustomPrice';
 import { initRateRuleModel } from './models/RateRule';
 import { initManualBlockModel } from './models/ManualBlock';
+import { initAirbnbBlockModel } from './models/AirbnbBlock';
 //import './services/whatsappservice';
-import { notifier } from './services/sseService'; 
+import { notifier } from './services/sseService';
+import { startAirbnbCron } from './jobs/airbnbCronJob';
 import { initContactModel } from './models/Contact';   // ← ajouter
 
 import { initSettingModel } from './models/Setting'; // ✅ AJOUTER
 import { initPromoCodeModel } from './models/PromoCode';
 import { initSubscriberModel } from './models/Subscriber';
 import { initNotificationModel } from './models/Notification';
-
 
 import contactRoutes from './routes/contactRoutes';     // ← ajouter
 
@@ -36,10 +37,6 @@ import promosRouter from './routes/promos';
 
 import subscribersRouter from './routes/subscribers';
 import notificationsRouter from './routes/notifications';
-
-
-
-
 
 const app = express();
 app.set('trust proxy', 1); // ← fix Render proxy
@@ -78,9 +75,10 @@ initAdminModel(sequelize);
 initCustomPriceModel(sequelize);
 initRateRuleModel(sequelize);
 initManualBlockModel(sequelize);
+initAirbnbBlockModel(sequelize);
 initContactModel(sequelize);
 initSettingModel(sequelize);
-initPromoCodeModel(sequelize); 
+initPromoCodeModel(sequelize);
 initSubscriberModel(sequelize);
 initNotificationModel(sequelize);
 
@@ -116,6 +114,9 @@ export const startServer = async (): Promise<void> => {
     await sequelize.authenticate();
     await sequelize.sync({ alter: true });
     await seedAdmin();
+
+    // Démarre le sync Airbnb (cron + sync immédiat) une fois la DB prête
+    startAirbnbCron();
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => console.log(`🚀 Serveur prêt sur le port ${PORT}`));

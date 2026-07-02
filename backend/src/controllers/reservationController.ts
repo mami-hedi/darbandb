@@ -6,7 +6,7 @@ import { CustomPrice } from '../models/CustomPrice';
 import { notifier } from '../services/sseService';
 import { Setting } from '../models/Setting';
 import { Notification } from '../models/Notification';
-// import { notifyNewReservation, notifyCancellation } from '../services/whatsappservice';
+import { sendReservationWhatsApp } from '../services/whatsappService';
 
 export class ReservationController {
   private emailService: EmailService;
@@ -29,106 +29,126 @@ export class ReservationController {
   // POST /reservations  — créer une réservation
   // ─────────────────────────────────────────────────────────────
   async createReservation(req: Request, res: Response) {
-  try {
-    const {
-      firstName, lastName, email, phone,
-      numberOfGuests, checkInDate, checkOutDate,
-      specialRequests, depositAmount,
-      originalPrice, promoCode, promoDiscount,  // ← champs promo
-    } = req.body;
-
-    // ── Vérification conflit de dates ──
-    const conflict = await ReservationModel.findOne({
-      where: {
-        status: { [Op.in]: ['confirmed', 'pending'] },
-        [Op.and]: [
-          { checkInDate:  { [Op.lt]: checkOutDate } },
-          { checkOutDate: { [Op.gt]: checkInDate  } },
-        ],
-      },
-    });
-    if (conflict) {
-      return res.status(400).json({
-        success: false,
-        error: 'Ces dates sont déjà réservées ou en attente.',
-      });
-    }
-
-    // ── Validation nuits ──
-    const nights = this.calculateNights(checkInDate, checkOutDate);
-    if (nights <= 0) {
-      return res.status(400).json({ success: false, error: 'Dates invalides.' });
-    }
-
-    // ── Prix : si promo appliquée côté client, on utilise req.body.totalPrice
-    //          sinon on recalcule en base ──
-    const computedPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
-    const finalPrice = (promoCode && req.body.totalPrice)
-      ? parseFloat(req.body.totalPrice)
-      : computedPrice;
-
-    const deposit = depositAmount != null
-      ? parseFloat(depositAmount)
-      : Math.round(finalPrice * 0.3 * 100) / 100;
-
-    const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-    // ── Créer la réservation ──
-    const reservation = await ReservationModel.create({
-      refNumber,
-      firstName, lastName, email, phone,
-      numberOfGuests: parseInt(numberOfGuests) || 2,
-      checkInDate, checkOutDate,
-      totalPrice:    finalPrice,
-      originalPrice: originalPrice  || null,
-      promoCode:     promoCode      || null,
-      promoDiscount: promoDiscount  || null,
-      specialRequests,
-      source:        'direct',
-      status:        'pending',
-      depositAmount: deposit,
-      depositPaid:   false,
-      depositPaidAt: null,
-      depositNotes:  null,
-      inspection:    null,
-    });
-
-    // ── Réponse immédiate au client ──
-    res.status(201).json({ success: true, data: reservation });
-
-    // ── Sauvegarder la notification en base ──
     try {
-      await Notification.create({
+      const {
+        firstName, lastName, email, phone,
+        numberOfGuests, checkInDate, checkOutDate,
+        specialRequests, depositAmount,
+        originalPrice, promoCode, promoDiscount,
+      } = req.body;
+
+      // ── Vérification conflit de dates ──
+      const conflict = await ReservationModel.findOne({
+        where: {
+          status: { [Op.in]: ['confirmed', 'pending'] },
+          [Op.and]: [
+            { checkInDate:  { [Op.lt]: checkOutDate } },
+            { checkOutDate: { [Op.gt]: checkInDate  } },
+          ],
+        },
+      });
+      if (conflict) {
+        return res.status(400).json({
+          success: false,
+          error: 'Ces dates sont déjà réservées ou en attente.',
+        });
+      }
+
+      // ── Validation nuits ──
+      const nights = this.calculateNights(checkInDate, checkOutDate);
+      if (nights <= 0) {
+        return res.status(400).json({ success: false, error: 'Dates invalides.' });
+      }
+
+      // ── Calcul prix ──
+      const computedPrice = await this.calculateTotalPrice(checkInDate, checkOutDate);
+      const finalPrice = (promoCode && req.body.totalPrice)
+        ? parseFloat(req.body.totalPrice)
+        : computedPrice;
+
+      const deposit = depositAmount != null
+        ? parseFloat(depositAmount)
+        : Math.round(finalPrice * 0.3 * 100) / 100;
+
+      const refNumber = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+      // ── Créer la réservation ──
+      const reservation = await ReservationModel.create({
+        refNumber,
+        firstName, lastName, email, phone,
+        numberOfGuests: parseInt(numberOfGuests) || 2,
+        checkInDate, checkOutDate,
+        totalPrice:    finalPrice,
+        originalPrice: originalPrice  || null,
+        promoCode:     promoCode      || null,
+        promoDiscount: promoDiscount  || null,
+        specialRequests,
+        source:        'direct',
+        status:        'pending',
+        depositAmount: deposit,
+        depositPaid:   false,
+        depositPaidAt: null,
+        depositNotes:  null,
+        inspection:    null,
+      });
+
+      // ── Réponse immédiate au client ──
+      res.status(201).json({ success: true, data: reservation });
+
+      // ── Notification en base ──
+      try {
+        await Notification.create({
+          guestName: `${reservation.firstName} ${reservation.lastName}`,
+          checkIn:   reservation.checkInDate,
+          checkOut:  reservation.checkOutDate,
+          guests:    reservation.numberOfGuests,
+          status:    'En attente',
+          read:      false,
+        });
+      } catch (notifErr: any) {
+        console.error('[Notification] Erreur sauvegarde:', notifErr.message);
+      }
+
+      // ── SSE ──
+      notifier.emit('new-reservation', {
+        id:        reservation.id,
         guestName: `${reservation.firstName} ${reservation.lastName}`,
         checkIn:   reservation.checkInDate,
         checkOut:  reservation.checkOutDate,
         guests:    reservation.numberOfGuests,
         status:    'En attente',
-        read:      false,
       });
-    } catch (notifErr: any) {
-      console.error('[Notification] Erreur sauvegarde:', notifErr.message);
+
+      // ── Email de confirmation (non bloquant) ──
+      this.emailService.sendConfirmationEmail(reservation)
+        .catch((e: any) => console.error('[Email] non envoyé:', e.message));
+
+      // ── WhatsApp admin (non bloquant) ──
+      sendReservationWhatsApp({
+        refNumber:      reservation.refNumber,
+        firstName:      reservation.firstName,
+        lastName:       reservation.lastName,
+        email:          reservation.email,
+        phone:          reservation.phone,
+        numberOfGuests: reservation.numberOfGuests,
+        checkInDate:    reservation.checkInDate,
+        checkOutDate:   reservation.checkOutDate,
+        totalPrice:     reservation.totalPrice,
+        originalPrice:  reservation.originalPrice,
+        promoCode:      reservation.promoCode,
+        promoDiscount:  reservation.promoDiscount,
+        depositAmount:  reservation.depositAmount,
+        specialRequests: reservation.specialRequests,
+        nights,
+      }).catch((e: any) =>
+        console.error('[WhatsApp] Échec envoi:', e?.response?.data || e.message)
+      );
+
+    } catch (error: any) {
+      console.error('Erreur createReservation:', error);
+      return res.status(500).json({ success: false, error: error.message });
     }
-
-    // ── Émettre l'événement SSE ──
-    notifier.emit('new-reservation', {
-      id:        reservation.id,
-      guestName: `${reservation.firstName} ${reservation.lastName}`,
-      checkIn:   reservation.checkInDate,
-      checkOut:  reservation.checkOutDate,
-      guests:    reservation.numberOfGuests,
-      status:    'En attente',
-    });
-
-    // ── Email de confirmation (non bloquant) ──
-    this.emailService.sendConfirmationEmail(reservation)
-      .catch((e: any) => console.error('[Email] non envoyé:', e.message));
-
-  } catch (error: any) {
-    console.error('Erreur createReservation:', error);
-    return res.status(500).json({ success: false, error: error.message });
   }
-}
 
   // ─────────────────────────────────────────────────────────────
   // GET /reservations
@@ -156,6 +176,8 @@ export class ReservationController {
 
   // ─────────────────────────────────────────────────────────────
   // GET /reservations/price-preview?checkIn=&checkOut=
+  // ✅ CORRIGÉ : basePrice depuis Setting (aligné avec calculateTotalPrice)
+  //    + dates en heure locale (aligné avec calculateTotalPrice)
   // ─────────────────────────────────────────────────────────────
   async getPricePreview(req: Request, res: Response) {
     try {
@@ -168,19 +190,21 @@ export class ReservationController {
         return res.status(400).json({ success: false, error: 'Dates invalides.' });
       }
 
-      const basePrice = parseFloat(process.env.PROPERTY_PRICE_PER_NIGHT || '150');
+      const settingRow = await Setting.findOne({ where: { key_name: 'base_price' } });
+      const basePrice  = settingRow ? parseFloat(settingRow.value) : 1500;
+
       const customPrices = await CustomPrice.findAll({
         where: { specificDate: { [Op.between]: [checkIn, checkOut] } },
       });
       const priceMap: Record<string, number> = {};
-      customPrices.forEach(cp => { priceMap[cp.specificDate] = parseFloat(cp.price as any); });
+      customPrices.forEach(cp => { priceMap[cp.specificDate] = cp.price; });
 
       const breakdown: { date: string; price: number; isCustom: boolean }[] = [];
       let total = 0;
-      const cursor = new Date(checkIn);
-      const end    = new Date(checkOut);
+      const cursor = this.parseDateOnly(checkIn);
+      const end    = this.parseDateOnly(checkOut);
       while (cursor < end) {
-        const ds    = cursor.toISOString().split('T')[0];
+        const ds    = this.formatLocalDate(cursor);
         const price = priceMap[ds] !== undefined ? priceMap[ds] : basePrice;
         breakdown.push({ date: ds, price, isCustom: priceMap[ds] !== undefined });
         total += price;
@@ -205,45 +229,42 @@ export class ReservationController {
   // PUT /reservations/:id  — modifier une réservation
   // ─────────────────────────────────────────────────────────────
   async updateReservation(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const updateData = { ...req.body };
-    const reservation = await ReservationModel.findByPk(id);
-    if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
- 
-    const oldStatus = reservation.status;
- 
-    if (updateData.checkInDate || updateData.checkOutDate) {
-      const nights = this.calculateNights(
-        updateData.checkInDate  || reservation.checkInDate,
-        updateData.checkOutDate || reservation.checkOutDate,
-      );
-      if (nights > 0) {
-        updateData.totalPrice = await this.calculateTotalPrice(
+    try {
+      const { id } = req.params;
+      const updateData = { ...req.body };
+      const reservation = await ReservationModel.findByPk(id);
+      if (!reservation) return res.status(404).json({ success: false, error: 'Non trouvée' });
+
+      const oldStatus = reservation.status;
+
+      if (updateData.checkInDate || updateData.checkOutDate) {
+        const nights = this.calculateNights(
           updateData.checkInDate  || reservation.checkInDate,
           updateData.checkOutDate || reservation.checkOutDate,
         );
-        if (updateData.depositAmount == null) {
-          updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
+        if (nights > 0) {
+          updateData.totalPrice = await this.calculateTotalPrice(
+            updateData.checkInDate  || reservation.checkInDate,
+            updateData.checkOutDate || reservation.checkOutDate,
+          );
+          if (updateData.depositAmount == null) {
+            updateData.depositAmount = Math.round(updateData.totalPrice * 0.3 * 100) / 100;
+          }
         }
       }
+
+      await reservation.update(updateData);
+
+      if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
+        this.emailService.sendCancellationEmail(reservation)
+          .catch((e: any) => console.error('[Email] annulation :', e.message));
+      }
+
+      return res.json({ success: true, data: reservation });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
     }
- 
-    await reservation.update(updateData);
- 
-    if (updateData.status && oldStatus !== 'cancelled' && updateData.status === 'cancelled') {
-      this.emailService.sendCancellationEmail(reservation)
-        .catch((e: any) => console.error('[Email] annulation :', e.message));
- 
-      // notifyCancellation(reservation)
-      //   .catch((e: any) => console.error('[WA] annulation :', e.message));
-    }
- 
-    return res.json({ success: true, data: reservation });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
   }
-}
 
   // ─────────────────────────────────────────────────────────────
   // PATCH /reservations/:id/status
@@ -267,7 +288,6 @@ export class ReservationController {
 
   // ─────────────────────────────────────────────────────────────
   // PATCH /reservations/:id/deposit
-  // Body : { depositAmount?, depositPaid, depositNotes? }
   // ─────────────────────────────────────────────────────────────
   async updateDeposit(req: Request, res: Response) {
     try {
@@ -299,7 +319,6 @@ export class ReservationController {
 
   // ─────────────────────────────────────────────────────────────
   // PATCH /reservations/:id/inspection
-  // Body : { inspection: Record<string, { status, note }> }
   // ─────────────────────────────────────────────────────────────
   async saveInspection(req: Request, res: Response) {
     try {
@@ -415,6 +434,43 @@ export class ReservationController {
         where: { status: 'confirmed', checkInDate: { [Op.gte]: new Date() } },
       });
 
+      // ── NOUVEAU : compteurs par statut + total réservations ──
+      const totalReservations = await ReservationModel.count();
+      const confirmedCount    = await ReservationModel.count({ where: { status: 'confirmed' } });
+      const pendingCount      = await ReservationModel.count({ where: { status: 'pending' } });
+      const cancelledCount    = await ReservationModel.count({ where: { status: 'cancelled' } });
+
+      // ── NOUVEAU : prochaine réservation (confirmée ou en attente, à venir) ──
+      const nextReservationRow = await ReservationModel.findOne({
+        where: {
+          status:      { [Op.in]: ['confirmed', 'pending'] },
+          checkInDate: { [Op.gte]: new Date() },
+        },
+        order: [['checkInDate', 'ASC']],
+      });
+
+      // ── NOUVEAU : réservations récentes (les plus récemment créées) ──
+      const recentReservationsRows = await ReservationModel.findAll({
+        order: [['createdAt', 'DESC']],
+        limit: 6,
+      });
+
+      // ── NOUVEAU : top clients (agrégation par email) ──
+      const topClientsRows = await ReservationModel.findAll({
+        attributes: [
+          'email',
+          [fn('MAX', col('firstName')),    'firstName'],
+          [fn('MAX', col('lastName')),     'lastName'],
+          [fn('COUNT', col('id')),         'stays'],
+          [fn('SUM',   col('totalPrice')), 'totalSpent'],
+        ],
+        where: { status: { [Op.in]: ['confirmed', 'pending'] } },
+        group: ['email'],
+        order: [[fn('SUM', col('totalPrice')), 'DESC']],
+        limit: 6,
+        raw: true,
+      });
+
       const monthNames = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
       const formattedRevenue = monthlyData.map((d: any) => ({
         m:       monthNames[d.month - 1] || 'Inconnu',
@@ -427,16 +483,54 @@ export class ReservationController {
         value: parseInt(s.count) || 0,
       }));
 
+      const formattedRecent = recentReservationsRows.map((r: any) => ({
+        refNumber:     r.refNumber,
+        firstName:     r.firstName,
+        lastName:      r.lastName,
+        checkInDate:   r.checkInDate,
+        checkOutDate:  r.checkOutDate,
+        totalPrice:    parseFloat(r.totalPrice) || 0,
+        depositPaid:   r.depositPaid,
+        depositAmount: parseFloat(r.depositAmount) || 0,
+        status:        r.status,
+        source:        r.source,
+      }));
+
+      const formattedTopClients = topClientsRows.map((c: any) => ({
+        firstName:  c.firstName,
+        lastName:   c.lastName,
+        email:      c.email,
+        stays:      parseInt(c.stays)        || 0,
+        totalSpent: parseFloat(c.totalSpent) || 0,
+      }));
+
+      const formattedNext = nextReservationRow ? {
+        firstName:      nextReservationRow.firstName,
+        lastName:       nextReservationRow.lastName,
+        checkInDate:    nextReservationRow.checkInDate,
+        checkOutDate:   nextReservationRow.checkOutDate,
+        numberOfGuests: nextReservationRow.numberOfGuests,
+        totalPrice:     parseFloat(nextReservationRow.totalPrice as any) || 0,
+        refNumber:      nextReservationRow.refNumber,
+      } : undefined;
+
       return res.json({
         success: true,
         data: {
           revenue: formattedRevenue.length > 0 ? formattedRevenue : [{ m: 'Aucun', revenue: 0, nights: 0 }],
           sources: formattedSources.length > 0 ? formattedSources : [{ name: 'Aucune', value: 0 }],
+          nextReservation:    formattedNext,
+          recentReservations: formattedRecent,
+          topClients:         formattedTopClients,
           totals: {
             revenue:             totalRevenue  || 0,
             clients:             totalClients  || 0,
             upcoming:            upcoming       || 0,
             nights:              formattedRevenue.reduce((a, c) => a + c.nights, 0),
+            reservations:        totalReservations,
+            confirmedCount,
+            pendingCount,
+            cancelledCount,
             pendingDeposits,
             pendingDepositTotal: pendingDepositTotal || 0,
           },
@@ -451,25 +545,28 @@ export class ReservationController {
   // ─────────────────────────────────────────────────────────────
   // Utilitaires privés
   // ─────────────────────────────────────────────────────────────
-  private async calculateTotalPrice(checkIn: string | Date, checkOut: string | Date): Promise<number> {
-    const start     = new Date(checkIn);
-    const end       = new Date(checkOut);
-    const settingRow = await Setting.findOne({ where: { key_name: 'base_price' } });
-const basePrice  = settingRow ? parseFloat(settingRow.value) : 1500;
 
-    const checkInStr  = start.toISOString().split('T')[0];
-    const checkOutStr = end.toISOString().split('T')[0];
+  // ✅ CORRIGÉ : basePrice depuis Setting + dates en heure locale
+  private async calculateTotalPrice(checkIn: string | Date, checkOut: string | Date): Promise<number> {
+    const start = typeof checkIn  === 'string' ? this.parseDateOnly(checkIn)  : checkIn;
+    const end   = typeof checkOut === 'string' ? this.parseDateOnly(checkOut) : checkOut;
+
+    const settingRow = await Setting.findOne({ where: { key_name: 'base_price' } });
+    const basePrice  = settingRow ? parseFloat(settingRow.value) : 1500;
+
+    const checkInStr  = this.formatLocalDate(start);
+    const checkOutStr = this.formatLocalDate(end);
 
     const customPrices = await CustomPrice.findAll({
       where: { specificDate: { [Op.between]: [checkInStr, checkOutStr] } },
     });
     const priceMap: Record<string, number> = {};
-    customPrices.forEach(cp => { priceMap[cp.specificDate] = parseFloat(cp.price as any); });
+    customPrices.forEach(cp => { priceMap[cp.specificDate] = cp.price; });
 
     let total = 0;
     const cursor = new Date(start);
     while (cursor < end) {
-      const ds = cursor.toISOString().split('T')[0];
+      const ds = this.formatLocalDate(cursor);
       total += priceMap[ds] !== undefined ? priceMap[ds] : basePrice;
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -479,5 +576,19 @@ const basePrice  = settingRow ? parseFloat(settingRow.value) : 1500;
   private calculateNights(checkIn: string | Date, checkOut: string | Date): number {
     const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
+
+  // ✅ NOUVEAU : parse "YYYY-MM-DD" en Date LOCALE (évite le piège UTC de `new Date(string)`)
+  private parseDateOnly(dateStr: string): Date {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // ✅ NOUVEAU : formate une Date en "YYYY-MM-DD" avec les getters LOCAUX
+  private formatLocalDate(d: Date): string {
+    const year  = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day   = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
